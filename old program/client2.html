@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الزبون</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/client.css">
+    <!-- PWA: AdVault -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#6D28D9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AdVault">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800" id="user-welcome">مرحباً بك</h1>
+            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-md font-semibold">بوابة العميل التجاري</span>
+        </div>
+        <button onclick="handleLogout()" 
+            class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">
+            تسجيل الخروج
+        </button>
+    </header>
+
+    <main class="p-6 flex-1 space-y-6">
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <p class="text-gray-400 text-sm font-medium">إجمالي مصاريف الإعلانات</p>
+                <p class="text-2xl font-bold text-indigo-600 mt-2" id="client-total-ads">0.00 €</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <p class="text-gray-400 text-sm font-medium">إجمالي المدفوعات المستلمة</p>
+                <p class="text-2xl font-bold text-emerald-600 mt-2" id="client-total-paid">0.00 €</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <p class="text-gray-400 text-sm font-medium">المبلغ المستحق الإجمالي بالدينار</p>
+                <p class="text-2xl font-bold text-red-600 mt-2" id="client-balance">0 دج</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 class="font-bold text-gray-700 mb-4">تفاصيل المدفوعات السابقة (الجديد في الأول)</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-right text-sm">
+                    <thead class="bg-gray-50 text-gray-500 border-b border-gray-100">
+                        <tr>
+                            <th class="p-3">التاريخ</th>
+                            <th class="p-3">المبلغ باليورو</th>
+                            <th class="p-3">المبلغ بالدينار</th>
+                            <th class="p-3">ملاحظة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="client-payments-table" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/client.js"></script>
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => console.log('[AdVault] SW registered:', reg.scope))
+        .catch(err => console.warn('[AdVault] SW failed:', err));
+    });
+  }
+</script>
+</body>
+</html>

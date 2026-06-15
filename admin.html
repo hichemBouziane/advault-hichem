@@ -6,44 +6,59 @@
     <title>لوحة تحكم المدير</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
-        body { font-family: 'Cairo', sans-serif; }
-        .hidden { display: none !important; }
-    </style>
+    <link rel="stylesheet" href="css/admin.css">
     <script>
-        const user = JSON.parse(localStorage.getItem('currentUser'));
-        if(!user || user.role !== 'admin') { window.location.href = 'index.html'; }
+        // التحقق المبكر من الصلاحية قبل تحميل الصفحة
+        (function() {
+            const _u = JSON.parse(localStorage.getItem('currentUser'));
+            if (!_u || _u.role !== 'admin') { window.location.href = 'index.html'; }
+        })();
     </script>
-
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
+    <!-- الهيدر -->
     <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-    <div>
-        <h1 class="text-xl font-bold text-gray-800" id="user-welcome">لوحة تحكم المدير</h1>
-        <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-md font-semibold">مدير النظام</span>
-    </div>
-    
-    <!-- قسم الأزرار العلوية -->
-    
-    <div class="flex items-center gap-3">
-    <a href="analytics.html" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">📊 لوحة التحليلات</a>
-    <a href="calculator.html" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">🧮 الحاسبة السريعة</a>
-    <button onclick="handleLogout()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">تسجيل الخروج</button>
-</div>
-</header>
+        <div>
+            <h1 class="text-xl font-bold text-gray-800" id="user-welcome">لوحة تحكم المدير</h1>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-md font-semibold">مدير النظام</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="analytics.html" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">📊 لوحة التحليلات</a>
+            <a href="calculator.html" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">🧮 الحاسبة السريعة</a>
+            <button onclick="handleLogout()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">تسجيل الخروج</button>
+        </div>
+    </header>
 
     <main class="p-6 flex-1 space-y-6">
+
+        <!-- أزرار الإجراءات السريعة -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button onclick="openModal('client-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center">+ إضافة زبون جديد</button>
             <button class="bg-emerald-600 text-gray-200 p-4 rounded-xl font-bold shadow opacity-50 cursor-not-allowed text-center">قريباً تسجيل إعلان</button>
-            <!-- الزر المحدث لفتح نافذة تسجيل الدفعة اليدوية -->
             <button onclick="document.getElementById('payment-modal').classList.remove('hidden'); openPaymentModal();" class="bg-amber-500 hover:bg-amber-600 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center transition">
                 💰 تسجيل دفعة جديدة
             </button>
         </div>
 
+        <!-- المساعد الصوتي -->
+        <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl shadow-md p-6 text-white">
+            <h3 class="text-lg font-bold mb-2 flex items-center gap-2">
+                <span>🤖 المساعد الصوتي الذكي (خاص بالأدمن)</span>
+            </h3>
+            <p class="text-xs text-indigo-200 mb-4">اضغط على المايك وتكلم بالدارجة الجزائرية لتسجيل الدفعات تلقائياً (مثال: "سجل منير عطاني عشرين آلاف")</p>
+            <div class="flex items-center gap-4">
+                <button id="voice-btn" onclick="startVoiceRecognition()" class="bg-white text-indigo-700 hover:bg-indigo-50 p-4 rounded-full shadow-lg transition duration-200 cursor-pointer flex items-center justify-center">
+                    <span id="mic-icon" class="text-xl">🎙️</span>
+                </button>
+                <div class="flex-1">
+                    <p id="voice-status" class="text-sm font-semibold text-indigo-100">جاهز للاستماع...</p>
+                    <p id="voice-result-text" class="text-xs text-indigo-200 italic mt-1 bg-indigo-900/30 p-2 rounded-lg hidden"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- جدول الزبائن -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h3 class="text-lg font-bold mb-4 text-gray-700">التقرير الشامل للمستحقات (الجديد أولاً)</h3>
             <div class="overflow-x-auto">
@@ -64,8 +79,10 @@
                 </table>
             </div>
         </div>
+
     </main>
 
+    <!-- ===== نافذة إضافة زبون جديد ===== -->
     <div id="client-modal" class="hidden fixed inset-0 bg-gray-900/50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <h3 class="text-lg font-bold text-gray-800 mb-4">إضافة زبون جديد</h3>
@@ -101,700 +118,111 @@
             </div>
         </div>
     </div>
-    <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl shadow-md p-6 text-white mb-6">
-    <h3 class="text-lg font-bold mb-2 flex items-center gap-2">
-        <span>🤖 المساعد الصوتي الذكي (خاص بالأدمن)</span>
-    </h3>
-    <p class="text-xs text-indigo-200 mb-4">اضغط على المايك وتكلم بالدارجة الجزائرية لتسجيل الدفعات تلقائياً (مثال: "سجل منير عطاني عشرين آلاف")</p>
-    
-    <div class="flex items-center gap-4">
-        <button id="voice-btn" onclick="startVoiceRecognition()" class="bg-white text-indigo-700 hover:bg-indigo-50 p-4 rounded-full shadow-lg transition duration-200 cursor-pointer flex items-center justify-center">
-            <span id="mic-icon" class="text-xl">🎙️</span>
-        </button>
-        <div class="flex-1">
-            <p id="voice-status" class="text-sm font-semibold text-indigo-100">جاهز للاستماع...</p>
-            <p id="voice-result-text" class="text-xs text-indigo-200 italic mt-1 bg-indigo-900/30 p-2 rounded-lg hidden"></p>
+
+    <!-- ===== نافذة تسجيل دفعة جديدة يدوياً ===== -->
+    <div id="payment-modal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+            <div class="bg-amber-500 p-4 text-white text-center font-bold text-lg">
+                💰 تسجيل دفعة مالية جديدة
+            </div>
+            <form id="manual-payment-form" onsubmit="submitManualPayment(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-1">اختر الزبون:</label>
+                    <select id="pop-client-select" required onchange="updateEuroFromDzd()" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
+                        <option value="">-- جاري تحميل قائمة الزبائن... --</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (دج):</label>
+                        <input type="number" id="pop-amount-dzd" oninput="updateEuroFromDzd()" placeholder="0" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (يورو €):</label>
+                        <input type="number" step="0.01" id="pop-amount-euro" placeholder="0.00" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center bg-amber-50/50">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-1">تاريخ الدفعة:</label>
+                    <input type="date" id="pop-payment-date" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-1">ملاحظة الدفعة:</label>
+                    <input type="text" id="pop-payment-note" value="Versement" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow cursor-pointer">
+                        ✅ حفظ وتوزيع الأرباح
+                    </button>
+                    <button type="button" onclick="closePaymentModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer text-center">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
-</div>
-    <script>
-        
-        const SUPABASE_URL = "https://uljdazwcjxogpymvbflq.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const META_ACCESS_TOKEN = "ضع_هنا_توكن_ميتا_الخاص_بالمطورين"; 
-        const META_AD_ACCOUNT_ID = "act_ضع_هنا_رقم_الحساب_الاعلاني"; 
-
-        document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
-        loadAdminData();
-// 1. ضع رابط غوغل شيت هنا في الأعلى (تأكد أنه أول سطر تحت وسم <script>)
-
-    // أضف window. قبل اسم الدالة لكي تصبح معرفة للمتصفح فوراً
-window.openPaymentModal = async function() {
-    const modal = document.getElementById('payment-modal');
-    const select = document.getElementById('pop-client-select');
-    
-    // ضبط التواريخ والملاحظة الافتراضية
-    document.getElementById('pop-payment-date').value = new Date().toISOString().split('T')[0];
-    document.getElementById('pop-payment-note').value = "Versement";
-    document.getElementById('pop-amount-dzd').value = "";
-    document.getElementById('pop-amount-euro').value = "";
-    
-    select.innerHTML = '<option value="">-- جاري تحميل الزبائن... --</option>';
-
-    try {
-        const { data: clients, error } = await _supabase
-            .from('clients')
-            .select('id, name, exchange_rate')
-            .order('name', { ascending: true });
-
-        if (error) throw error;
-
-        select.innerHTML = '<option value="">-- اختر الزبون من القائمة --</option>';
-        clients.forEach(client => {
-            const option = document.createElement('option');
-            option.value = client.id;
-            option.setAttribute('data-name', client.name);
-            option.setAttribute('data-rate', client.exchange_rate || 240);
-            option.innerText = client.name;
-            select.appendChild(option);
-        });
-
-    } catch (e) {
-        console.error("خطأ في جلب قائمة الزبائن:", e);
-        select.innerHTML = '<option value="">❌ فشل تحميل الزبائن</option>';
-    }
-}
-
-async function fetchMetaCampaignsSpend() {
-    const CLEAN_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHi9J9axOomtAw1vM9Y2VE_vHkOPwO77R2MDBiKKJfC3yXynHjBTaUzO1hFs3AEeZTmhEu9gBwHDDq/pub?gid=1473599105&single=true&output=csv";
-
-    try {
-        console.log("🔄 جاري بدء الاتصال بـ Google Sheets...");
-        const response = await fetch(CLEAN_SHEET_URL, { cache: "no-store" });
-        
-        if (!response.ok) throw new Error("Network response was not ok");
-        
-        const rawText = await response.text();
-        const lines = rawText.split('\n');
-        const campaigns = [];
-
-        for (let i = 1; i < lines.length; i++) {
-            const currentLine = lines[i].trim();
-            if (!currentLine) continue;
-            
-            const columns = currentLine.split(',');
-            const campaignName = columns[0]?.replace(/["']/g, '').trim();
-            const spendValue = parseFloat(columns[1]?.replace(/["']/g, '').trim()) || 0;
-
-            if (campaignName) {
-                campaigns.push({
-                    name: campaignName,
-                    insights: { data: [{ spend: spendValue }] }
-                });
-            }
-        }
-        console.log("✅ تم المعالجة بنجاح! عدد الحملات:", campaigns.length);
-        return campaigns;
-    } catch (e) {
-        console.error("❌ خطأ أثناء معالجة قوقل شيت:", e.message);
-        return [];
-    }
-}
-
-        function calculateSpendForKeyword(campaigns, keyword) {
-            if (!keyword) return 0;
-            let totalSpend = 0;
-            campaigns.forEach(camp => {
-                if (camp.name.toLowerCase().includes(keyword.toLowerCase())) {
-                    if (camp.insights?.data?.[0]) totalSpend += parseFloat(camp.insights.data[0].spend || 0);
-                }
-            });
-            return totalSpend;
-        }
-
-        async function loadAdminData() {
-            const metaCampaigns = await fetchMetaCampaignsSpend();
-            let { data: clients } = await _supabase.from('clients').select('*').eq('role', 'client').order('created_at', { ascending: false });
-            
-            const adminTable = document.getElementById('admin-clients-table');
-            adminTable.innerHTML = '';
-
-            if(!clients || clients.length === 0) {
-                adminTable.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">لا يوجد زبائن حالياً.</td></tr>';
-                return;
-            }
-
-            clients.forEach(async (client) => {
-                let facebookSpendEuro = calculateSpendForKeyword(metaCampaigns, client.campaign_keyword);
-                let { data: payments } = await _supabase.from('payments').select('amount_euro').eq('client_id', client.id);
-                let totalPaidEuro = payments?.reduce((sum, item) => sum + parseFloat(item.amount_euro || 0), 0) || 0;
-                // 1. حساب مصاريف فيسبوك شاملة فائدة الوكالة (ضرب المصاريف الصافية في 1.2)
-                let facebookSpendWithProfit = (parseFloat(facebookSpendEuro) || 0) * 1.2;
-
-                // 2. حساب الباقي باليورو (المصاريف مع الفائدة - المدفوع يدوياً)
-                let remainingEuro = facebookSpendWithProfit - (parseFloat(totalPaidEuro) || 0);
-
-                // 3. تحويل الناتج إلى الدينار الجزائري بناءً على سعر صرف الزبون وتقريب الرقم
-                let finalDebtDzd = Math.round(remainingEuro * (parseFloat(client.exchange_rate) || 240));
-
-                adminTable.innerHTML += `
-                    <tr class="hover:bg-gray-50 border-b border-gray-100">
-                        <td class="p-3 font-medium">${client.name}</td>
-                        <td class="p-3 text-indigo-600 font-semibold">${client.campaign_keyword || '-'}</td>
-                        <td class="p-3 font-semibold">€ ${facebookSpendWithProfit.toFixed(2)} </td>
-                        <td class="p-3 text-emerald-600">${totalPaidEuro.toFixed(2)} €</td>
-                        <td class="p-3 text-gray-500">${client.exchange_rate} دج</td>
-                        <td class="p-3 font-bold ${finalDebtDzd > 0 ? 'text-red-500':'text-gray-700'}">${finalDebtDzd.toLocaleString('fr-FR', {maximumFractionDigits: 0})} دج</td>
-                    </tr>`;
-            });
-        }
-
-        function openModal(id) { if(id === 'client-modal') document.getElementById('client-modal').classList.remove('hidden'); }
-        function closeClientModal() { document.getElementById('client-modal').classList.add('hidden'); }
-
-        async function saveNewClient() {
-            const name = document.getElementById('new-client-name').value.trim();
-            const phone = document.getElementById('new-client-phone').value.trim();
-            const email = document.getElementById('new-client-email').value.trim();
-            const password = document.getElementById('new-client-pass').value.trim();
-            const keyword = document.getElementById('new-client-keyword').value.trim();
-            const rate = document.getElementById('new-client-rate').value.trim();
-
-            if(!name || !phone || !email || !password || !keyword || !rate) return;
-
-            await _supabase.from('clients').insert([{ name, phone, email, password, role: 'client', campaign_keyword: keyword, exchange_rate: parseInt(rate) }]);
-            closeClientModal();
-            loadAdminData();
-        }
-
-        function handleLogout() { localStorage.clear(); window.location.href = 'index.html'; }
-        // مفتاح جيميناي المجاني (احصل عليه مجاناً من Google AI Studio وضعه هنا)
-const GEMINI_API_KEY = "AQ.Ab8RN6KeOoitkHChvbjn6l25tyPeGwMxjuhRPlg-Bz789QLDFg";
-
-// دالة تشغيل التعرف على الصوت وتحويله لنص
-function startVoiceRecognition() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        alert("متصفحك لا يدعم التعرف على الصوت، يرجى استخدام Google Chrome.");
-        return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-DZ'; // دعم اللهجة الجزائرية والعربية
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    const btn = document.getElementById('voice-btn');
-    const status = document.getElementById('voice-status');
-    const resultTxt = document.getElementById('voice-result-text');
-
-    recognition.onstart = () => {
-        status.innerText = "جاري الاستماع... تكلم الآن";
-        btn.classList.add('animate-pulse', 'bg-red-50', 'text-red-600');
-    };
-
-    recognition.onerror = (e) => {
-        status.innerText = "حدث خطأ في الاستماع، جرب مرة أخرى.";
-        btn.classList.remove('animate-pulse', 'bg-red-50', 'text-red-600');
-    };
-
-    recognition.onend = () => {
-        btn.classList.remove('animate-pulse', 'bg-red-50', 'text-red-600');
-    };
-
-    recognition.onresult = async (event) => {
-        const textSpoken = event.results[0][0].transcript;
-        resultTxt.innerText = `قلت: "${textSpoken}"`;
-        resultTxt.classList.remove('hidden');
-        status.innerText = "جاري تحليل الكلام عبر الذكاء الاصطناعي...";
-
-        // إرسال النص المعالج لـ Gemini لفهمه تحليلياً
-        await processVoiceWithAI(textSpoken);
-    };
-
-    recognition.start();
-}
-
-// دالة معالجة النص بواسطة Gemini وتحويله إلى بيانات منظمة ونقلها لـ Supabase
-async function processVoiceWithAI(text) {
-    const status = document.getElementById('voice-status');
-    
-    // البرومبت السحري لتوجيه الجيميناي لفهم الدارجة الجزائرية والمبالغ المذكورة
-    const prompt = `
-    أنت نظام مالي جزائري ذكي. قم بتحليل الجملة التالية المكتوبة بالدارجة أو العربية واستخرج منها البيانات المالية بدقة على شكل JSON فقط وبدون أي كلام إضافي أو علامات اقتباس للمقالات (Markdown blocks).
-    الجملة: "${text}"
-
-    شروط استخراج المبالغ بالدينار (DZD):
-    - "عشرين آلاف" أو "عشرين الف" أو "دوز ميا" تعني 20000.
-    - "مليون" يعني 10000.
-    - "ميا" أو "مية" تعني 1000.
-    - "خمسين آلاف" تعني 50000.
-    - إذا ذكر مبلغا باليورو أو الدولار ولم تكن متأكدا، ضعه في حقل amount_euro واحسب الـ amount_dzd بـ 0.
-
-    يجب أن يكون الرد بصيغة JSON كالتالي تماماً:
-    {
-      "client_keyword": "الكلمة المفتاحية أو اسم الزبون المذكور بالفرنسية أو العربية مثل monir",
-      "amount_dzd": 20000,
-      "amount_euro": 0,
-      "note": "الملاحظة المستخلصة مثل versement"
-    }
-    `;
-
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${AQ.Ab8RN6KeOoitkHChvbjn6l25tyPeGwMxjuhRPlg-Bz789QLDFg}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-
-        const data = await response.json();
-        let aiResponseText = data.candidates[0].content.parts[0].text.trim();
-        
-        // تنظيف الرد إذا وضع الذكاء الاصطناعي علامات الـ Markdown ```json
-        aiResponseText = aiResponseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        const resultJson = JSON.parse(aiResponseText);
-
-        if(!resultJson.amount_dzd || !resultJson.client_keyword) {
-            status.innerText = "لم أفهم اسم الزبون أو المبلغ بوضوح. أعد المحاولة.";
-            return;
-        }
-
-        status.innerText = `جاري البحث عن الزبون "${resultJson.client_keyword}" في قاعدة البيانات...`;
-
-        // البحث عن الـ ID الخاص بالزبون في Supabase باستخدام اسمه أو الكلمة المفتاحية
-        const { data: client, error: clientErr } = await _supabase
-            .from('clients')
-            .select('id, name')
-            .ilike('campaign_keyword', `%${resultJson.client_keyword}%`)
-            .maybeSingle();
-
-        if (clientErr || !client) {
-            // محاولة ثانية بالبحث في حقل الاسم الكامل
-            const { data: clientByName } = await _supabase
-                .from('clients')
-                .select('id, name')
-                .ilike('name', `%${resultJson.client_keyword}%`)
-                .maybeSingle();
-
-            if (!clientByName) {
-                status.innerText = `❌ لم أجد زبون يطابق الكلمة: ${resultJson.client_keyword}`;
-                return;
-            }
-            saveAiPayment(clientByName.id, clientByName.name, resultJson, status);
-        } else {
-            saveAiPayment(client.id, client.name, resultJson, status);
-        }
-
-    } catch (e) {
-        console.error(e);
-        status.innerText = "❌ فشل الاتصال بالذكاء الاصطناعي.";
-    }
-}
-
-// دالة تشغيل التعرف على الصوت (تأكد من وجود مفتاح جيميناي الخاص بك ومكتبة سوبابايز في الملف)
-function startVoiceRecognition() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        alert("متصفحك لا يدعم التعرف على الصوت، يرجى استخدام Google Chrome.");
-        return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-DZ'; 
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    const btn = document.getElementById('voice-btn');
-    const status = document.getElementById('voice-status');
-    const resultTxt = document.getElementById('voice-result-text');
-
-    recognition.onstart = () => {
-        status.innerText = "جاري الاستماع... تكلم الآن";
-        btn.classList.add('animate-pulse', 'bg-red-50', 'text-red-600');
-    };
-
-    recognition.onerror = (e) => {
-        status.innerText = "حدث خطأ في الاستماع، جرب مرة أخرى.";
-        btn.classList.remove('animate-pulse', 'bg-red-50', 'text-red-600');
-    };
-
-    recognition.onend = () => {
-        btn.classList.remove('animate-pulse', 'bg-red-50', 'text-red-600');
-    };
-
-    recognition.onresult = async (event) => {
-        const textSpoken = event.results[0][0].transcript;
-        resultTxt.innerText = `قلت: "${textSpoken}"`;
-        resultTxt.classList.remove('hidden');
-        status.innerText = "جاري تحليل الكلام وفهم الطلب...";
-
-        await processVoiceWithAI(textSpoken);
-    };
-
-    recognition.start();
-}
-
-// الدالة الرئيسية لتحليل الكلام (تسجيل أم استعلام)
-async function processVoiceWithAI(text) {
-    const status = document.getElementById('voice-status');
-    
-    const prompt = `
-    أنت نظام مالي جزائري ذكي يدير الحسابات والإعلانات. قم بتحليل الجملة التالية المكتوبة بالدارجة أو العربية وحدد نية المستخدم (Intent).
-    الجملة: "${text}"
-
-    يجب أن تحدد هل نية المستخدم هي:
-    1. "insert": تسجيل دفعة مالية جديدة (مثل: سجل لمنير عشرة آلاف، أضف دفعة، دخلت مبلغا لفلان).
-    2. "query": استعلام وسؤال عن الحسابات (مثل: شحال يسال منير، كم مستحقات منير، كم تكلفة الإعلان الأخير لمنير، شحال كانت الدفعة الأخيرة لفلان).
-
-    قواعد استخراج المبالغ بالدينار (DZD) في حالة الـ insert فقط:
-    - "عشرين آلاف" أو "عشرين الف" أو "دوز ميا" تعني 20000، "مليون" يعني 10000، "ميا" تعني 1000.
-
-    نوع الاستعلام (query_type) في حالة كان الطلب سؤالاً:
-    - "balance": إذا كان السؤال عن إجمالي المستحقات أو الباقي (شحال يسال، كم مستحقاته).
-    - "last_payment": إذا كان السؤال عن الدفعة الأخيرة (شحال كانت الدفعة الأخيرة).
-    - "last_campaign": إذا كان السؤال عن الإعلان الأخير أو مصاريفه (كم تكلفة الإعلان الأخير).
-
-    يجب أن يكون الرد بصيغة JSON كالتالي تماماً وبدون أي كلام إضافي:
-    {
-      "intent": "insert" أو "query",
-      "client_keyword": "الكلمة المفتاحية أو اسم الزبون المذكور بالفرنسية أو العربية مثل monir",
-      "amount_dzd": 0,
-      "query_type": "balance" أو "last_payment" أو "last_campaign" أو null
-    }
-    `;
-
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${AQ.Ab8RN6KeOoitkHChvbjn6l25tyPeGwMxjuhRPlg-Bz789QLDFg}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-
-        const data = await response.json();
-        let aiResponseText = data.candidates[0].content.parts[0].text.trim();
-        aiResponseText = aiResponseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        
-        const resultJson = JSON.parse(aiResponseText);
-
-        if (!resultJson.client_keyword) {
-            speakAndStatus("لم أفهم اسم الزبون بوضوح، أعد المحاولة من فضلك.");
-            return;
-        }
-
-        // البحث عن الزبون في قاعدة البيانات
-        const { data: client, error: clientErr } = await _supabase
-            .from('clients')
-            .select('*')
-            .ilike('campaign_keyword', `%${resultJson.client_keyword}%`)
-            .maybeSingle();
-
-        let targetClient = client;
-        if (!targetClient) {
-            const { data: clientByName } = await _supabase
-                .from('clients')
-                .select('*')
-                .ilike('name', `%${resultJson.client_keyword}%`)
-                .maybeSingle();
-            targetClient = clientByName;
-        }
-
-        if (!targetClient) {
-            speakAndStatus(`❌ لم أجد زبون في النظام يطابق الاسم: ${resultJson.client_keyword}`);
-            return;
-        }
-
-        // التوجيه بناءً على نية المستخدم (تسجيل أم سؤال)
-        if (resultJson.intent === 'insert') {
-            await handleAiInsert(targetClient, resultJson);
-        } else if (resultJson.intent === 'query') {
-            await handleAiQuery(targetClient, resultJson);
-        }
-
-    } catch (e) {
-        console.error(e);
-        speakAndStatus("❌ فشل الاتصال بالذكاء الاصطناعي أو تحليل البيانات.");
-    }
-}
-
-// دالة تسجيل الدفعة العادية + ترحيل الأرباح تلقائياً لجدول الأرشيف الجديد
-async function handleAiInsert(client, data) {
-    if (!data.amount_dzd || data.amount_dzd <= 0) {
-        speakAndStatus("لم أستطع تحديد المبلغ المراد تسجيله بوضوح.");
-        return;
-    }
-    
-    const amountDzd = data.amount_dzd;
-    const rate = client.exchange_rate || 240;
-    const calculatedEuro = parseFloat((amountDzd / rate).toFixed(2));
-
-    // 1. إدخال الدفعة في جدول المدفوعات العادي الخاص بك
-    const { data: newPayment, error: paymentErr } = await _supabase
-        .from('payments')
-        .insert([{
-            client_id: client.id,
-            amount_dzd: amountDzd,
-            amount_euro: calculatedEuro,
-            note: "تسجيل صوتي تلقائي",
-            date: new Date().toISOString().split('T')[0]
-        }])
-        .select()
-        .single(); // جلب بيانات الدفعة بعد إدخالها لأخذ الـ ID الخاص بها
-
-    if (paymentErr) {
-        console.error(paymentErr);
-        speakAndStatus("❌ حدث خطأ أثناء حفظ الدفعة في جدول المدفوعات.");
-        return;
-    }
-
-    // 2. الحسبة المالية الخاصة بك للأرباح
-    const adCapital = parseFloat((amountDzd / 1.2).toFixed(2)); // رأس مال الإعلان
-    const totalProfit = parseFloat((amountDzd - adCapital).toFixed(2)); // الفائدة الإجمالية
-    const companyProfit = parseFloat((totalProfit * 0.30).toFixed(2)); // 30% للشركة
-    const myProfit = parseFloat((totalProfit * 0.70).toFixed(2)); // 70% لك أنت
-
-    // 3. ترحيل الحسبة كاملة إلى جدول الأرشيف الجديد منفصلاً تماماً
-    const { error: archiveErr } = await _supabase
-        .from('profits_archive')
-        .insert([{
-            payment_id: newPayment.id, // ربط الأرباح بالدفعة المسجلة
-            client_name: client.name,
-            amount_received: amountDzd,
-            ad_capital: adCapital,
-            total_profit: totalProfit,
-            company_profit: companyProfit,
-            my_profit: myProfit
-        }]);
-
-    if (archiveErr) {
-        console.error(archiveErr);
-        speakAndStatus("⚠️ تم تسجيل الدفعة، لكن فشل ترحيل الأرباح إلى جدول الأرشيف.");
-    } else {
-        speakAndStatus(`تم بنجاح تسجيل الدفعة وحساب أرباحك الصافية وهي ${myProfit} دينار وتم أرشفة العملية.`);
-        loadAdminData(); // تحديث جداول الواجهة
-    }
-}
-
-// 2️⃣ حالة الاستعلام والسؤال عن البيانات (المستحقات، الدفعة الأخيرة، الإعلان الأخير)
-async function handleAiQuery(client, data) {
-    if (data.query_type === 'balance') {
-        // حساب إجمالي المستحقات (دمج مصاريف فيسبوك الحية مع دفعات سوبابايز)
-        const metaCampaigns = await fetchMetaCampaignsSpend();
-        let totalSpendEuro = 0;
-        metaCampaigns.forEach(camp => {
-            if (camp.name.toLowerCase().includes(client.campaign_keyword.toLowerCase())) {
-                if (camp.insights?.data?.[0]) totalSpendEuro += parseFloat(camp.insights.data[0].spend || 0);
-            }
-        });
-
-        const { data: payments } = await _supabase.from('payments').select('amount_euro').eq('client_id', client.id);
-        let totalPaidEuro = payments?.reduce((sum, item) => sum + parseFloat(item.amount_euro || 0), 0) || 0;
-        let remainingEuro = totalSpendEuro - totalPaidEuro;
-        let finalDebtDzd = Math.round(remainingEuro * (client.exchange_rate || 240));
-
-        if (finalDebtDzd > 0) {
-            speakAndStatus(`إجمالي المستحقات الحالية على الزبون ${client.name} هي ${finalDebtDzd.toLocaleString('fr-FR')} دينار جزائري.`);
-        } else if (finalDebtDzd < 0) {
-            speakAndStatus(`الزبون ${client.name} لديه رصيد مسبق الدفع قيمته ${Math.abs(finalDebtDzd).toLocaleString('fr-FR')} دينار جزائري.`);
-        } else {
-            speakAndStatus(`حساب الزبون ${client.name} متوازن تماماً، ومستحقاته الحالية هي صفر دينار.`);
-        }
-
-    } else if (data.query_type === 'last_payment') {
-        // جلب الدفعة الأخيرة المسجلة في سوبابايز
-        const { data: lastPayment, error } = await _supabase
-            .from('payments')
-            .select('*')
-            .eq('client_id', client.id)
-            .order('created_at', { ascending: false }) // أو حسب حقل date
-            .limit(1)
-            .maybeSingle();
-
-        if (error || !lastPayment) {
-            speakAndStatus(`لا توجد أي مدفوعات مسجلة سابقاً في النظام للزبون ${client.name}.`);
-        } else {
-            const pDate = lastPayment.date || "تاريخ غير محدد";
-            speakAndStatus(`الدفعة الأخيرة للزبون ${client.name} كانت بتاريخ ${pDate} بقيمة ${lastPayment.amount_dzd.toLocaleString('fr-FR')} دينار جزائري.`);
-        }
-
-    } else if (data.query_type === 'last_campaign') {
-        // جلب تكلفة الإعلان الأخير النشط من فيسبوك
-        const metaCampaigns = await fetchMetaCampaignsSpend();
-        let lastCamp = metaCampaigns.find(camp => camp.name.toLowerCase().includes(client.campaign_keyword.toLowerCase()));
-
-        if (lastCamp && lastCamp.insights?.data?.[0]) {
-            let spendEuro = parseFloat(lastCamp.insights.data[0].spend || 0);
-            let spendDzd = Math.round(spendEuro * (client.exchange_rate || 240));
-            speakAndStatus(`تكلفة الإعلان الأخير للزبون ${client.name} المسمى ${lastCamp.name} بلغت ${spendEuro.toFixed(2)} يورو، أي ما يعادل ${spendDzd.toLocaleString('fr-FR')} دينار جزائري.`);
-        } else {
-            speakAndStatus(`لم أجد أي حملات إعلانية نشطة أو حديثة حالياً للزبون ${client.name} على فيسبوك.`);
-        }
-    }
-}
-
-// دالة مساعدة لتحديث النص على الشاشة ونطق الإجابة صوتياً
-function speakAndStatus(message) {
-    document.getElementById('voice-status').innerText = message;
-    
-    // نطق الرسالة بصوت المتصفح مجاناً
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // إيقاف أي نطق سابق
-        const utterance = new SpeechSynthesisUtterance(message);
-        utterance.lang = 'ar-SA'; // نطق باللغة العربية
-        utterance.rate = 0.95;    // ضبط سرعة الكلام لتكون واضحة
-        window.speechSynthesis.speak(utterance);
-    }
-}
-    </script>
-    <!-- نافذة تسجيل دفعة جديدة يدويًا -->
-<div id="payment-modal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
-        <div class="bg-amber-500 p-4 text-white text-center font-bold text-lg">
-            💰 تسجيل دفعة مالية جديدة
-        </div>
-        <form id="manual-payment-form" onsubmit="submitManualPayment(event)" class="p-6 space-y-4">
-            
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-1">اختر الزبون:</label>
-                <select id="pop-client-select" required onchange="updateEuroFromDzd()" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
-                    <option value="">-- جاري تحميل قائمة الزبائن... --</option>
-                </select>
+    <!-- ===== نافذة دفعات الزبون ===== -->
+    <div id="client-payments-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
+            <div class="bg-indigo-600 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg" id="payments-modal-title">دفعات الزبون</h3>
+                <button onclick="closePaymentsModal()" class="text-white hover:text-indigo-200 text-xl cursor-pointer">✕</button>
             </div>
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                <table class="w-full text-right text-sm">
+                    <thead class="bg-gray-50 text-gray-500 border-b border-gray-100">
+                        <tr>
+                            <th class="p-3">التاريخ</th>
+                            <th class="p-3">المبلغ (دج)</th>
+                            <th class="p-3">المبلغ (€)</th>
+                            <th class="p-3">ملاحظة</th>
+                            <th class="p-3">إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="client-payments-list" class="divide-y divide-gray-100"></tbody>
+                </table>
+                <div id="no-payments-msg" class="hidden text-center py-8 text-gray-400">لا توجد دفعات مسجلة لهذا الزبون</div>
+            </div>
+        </div>
+    </div>
 
-            <div class="grid grid-cols-2 gap-3">
+    <!-- ===== نافذة تعديل الدفعة ===== -->
+    <div id="edit-payment-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="bg-amber-500 p-4 text-white text-center font-bold text-lg">
+                ✏️ تعديل الدفعة
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="edit-payment-id">
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (دج):</label>
-                    <input type="number" id="pop-amount-dzd" oninput="updateEuroFromDzd()" placeholder="0" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center">
+                    <input type="number" id="edit-amount-dzd" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center font-bold">
                 </div>
-
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (يورو €):</label>
-                    <input type="number" step="0.01" id="pop-amount-euro" placeholder="0.00" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center bg-amber-50/50">
+                    <input type="number" step="0.01" id="edit-amount-euro" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center font-bold">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-1">التاريخ:</label>
+                    <input type="date" id="edit-payment-date" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-1">ملاحظة:</label>
+                    <input type="text" id="edit-payment-note" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button onclick="saveEditedPayment()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                        ✅ حفظ التعديلات
+                    </button>
+                    <button onclick="document.getElementById('edit-payment-modal').classList.add('hidden')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                        إلغاء
+                    </button>
                 </div>
             </div>
-
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-1">تاريخ الدفعة:</label>
-                <input type="date" id="pop-payment-date" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center">
-            </div>
-
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-1">ملاحظة الدفعة:</label>
-                <input type="text" id="pop-payment-note" value="Versement" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-            </div>
-
-            <div class="flex gap-3 pt-2">
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow cursor-pointer">
-                    ✅ حفظ وتوزيع الأرباح
-                </button>
-                <button type="button" onclick="document.getElementById('payment-modal').classList.add('hidden'); document.getElementById('manual-payment-form').reset();" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer text-center">
-                    إلغاء
-                </button>
-            </div>
-        </form>
+        </div>
     </div>
-</div>
 
-    <script>
-
-// دالة تحديث حقل اليورو تلقائياً عند كتابة الدينار (مع إمكانية تعديله يدوياً لاحقاً)
-// دالة الحساب التلقائي لليورو عند إدخال الدينار بناءً على سعر صرف الزبون المختار
-function updateEuroFromDzd() {
-    const selectEl = document.getElementById('pop-client-select');
-    const selectedOption = selectEl.options[selectEl.selectedIndex];
-    if (!selectedOption || !selectEl.value) return;
-
-    const rate = parseFloat(selectedOption.getAttribute('data-rate')) || 240;
-    const amountDzd = parseFloat(document.getElementById('pop-amount-dzd').value) || 0;
-    
-    if (amountDzd > 0) {
-        document.getElementById('pop-amount-euro').value = (amountDzd / rate).toFixed(2);
-    } else {
-        document.getElementById('pop-amount-euro').value = "";
-    }
-}
-
-function closePaymentModal() {
-    document.getElementById('payment-modal').classList.add('hidden');
-    document.getElementById('manual-payment-form').reset();
-}
-
-// دالة الحفظ النهائي وإدخال البيانات في السيرفر والأرشيف
-async function submitManualPayment(event) {
-    event.preventDefault();
-
-    const selectEl = document.getElementById('pop-client-select');
-    const clientId = selectEl.value;
-    const selectedOption = selectEl.options[selectEl.selectedIndex];
-    
-    const clientName = selectedOption.getAttribute('data-name');
-    
-    const amountDzd = parseFloat(document.getElementById('pop-amount-dzd').value);
-    const amountEuro = parseFloat(document.getElementById('pop-amount-euro').value);
-    const paymentDate = document.getElementById('pop-payment-date').value;
-    
-    // جلب الملاحظة وإذا تركها فارغة تأخذ القيمة الافتراضية "Versement" تلقائياً
-    let paymentNote = document.getElementById('pop-payment-note').value.trim();
-    if (!paymentNote) paymentNote = "Versement";
-
-    if (!clientId || !amountDzd || isNaN(amountEuro) || !paymentDate) {
-        alert("يرجى ملء الحقول الأساسية بشكل صحيح.");
-        return;
-    }
-
-    try {
-        // 1. إدخال الدفعة الحية في جدول المدفوعات (payments) متضمنة حقل الـ note والـ العملة الأجنبية والـ دج
-        const { data: newPayment, error: payErr } = await _supabase
-            .from('payments')
-            .insert([{
-                client_id: clientId,
-                amount_dzd: amountDzd,
-                amount_euro: amountEuro, // القيمة المعتمدة (تلقائية أو المعدلة يدوياً)
-                note: paymentNote,
-                date: paymentDate
-            }])
-            .select()
-            .single();
-
-        if (payErr) throw payErr;
-
-        // 2. الحسبة المالية الصارمة لجدول أرشفة الأرباح (الـ 70% والـ 30%)
-        const adCapital = parseFloat((amountDzd / 1.2).toFixed(2)); 
-        const totalProfit = parseFloat((amountDzd - adCapital).toFixed(2)); 
-        const companyProfit = parseFloat((totalProfit * 0.30).toFixed(2)); 
-        const myProfit = parseFloat((totalProfit * 0.70).toFixed(2)); 
-
-        const timestampWithTime = `${paymentDate}T12:00:00Z`;
-
-        // 3. الترحيل النهائي لجدول الأرشيف profits_archive
-        const { error: arcErr } = await _supabase
-            .from('profits_archive')
-            .insert([{
-                payment_id: newPayment.id,
-                client_name: clientName,
-                amount_received: amountDzd,
-                ad_capital: adCapital,
-                total_profit: totalProfit,
-                company_profit: companyProfit,
-                my_profit: myProfit,
-                created_at: timestampWithTime
-            }]);
-
-        if (arcErr) throw arcErr;
-
-        alert(`✅ تم تسجيل مبلغ ${amountDzd.toLocaleString('fr-FR')} دج (${amountEuro} €) بنجاح تحت ملاحظة: "${paymentNote}".`);
-        closePaymentModal();
-        
-        if (typeof loadAdminData === 'function') loadAdminData();
-        if (typeof loadAnalyticsData === 'function') loadAnalyticsData();
-
-    } catch (err) {
-        console.error("خطأ أثناء معالجة وحفظ الدفعة:", err);
-        alert(`❌ فشل الاتصال بقاعدة البيانات: ${err.message}`);
-    }
-}
-    </script>
+    <script src="js/admin.js"></script>
 </body>
 </html>

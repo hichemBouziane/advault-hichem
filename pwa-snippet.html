@@ -1,0 +1,30 @@
+<!--
+  ==========================================
+  أضف هذا الكود في <head> لكل صفحة HTML:
+  index.html / admin.html / client.html / analytics.html / calculator.html
+  ==========================================
+-->
+
+<!-- PWA: AdVault -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#6D28D9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AdVault">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+<!--
+  ==========================================
+  أضف هذا السكريبت قبل </body> في كل صفحة:
+  ==========================================
+-->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(reg => console.log('[AdVault] SW registered:', reg.scope))
+        .catch(err => console.warn('[AdVault] SW failed:', err));
+    });
+  }
+</script>

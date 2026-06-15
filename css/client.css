@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+
+body {
+    font-family: 'Cairo', sans-serif;
+}
+
+/* ===== بطاقة الرصيد - الحالات الثلاث ===== */
+
+/* حالة عادية / نظيف — بنفسجي */
+.balance-card-purple {
+    background: linear-gradient(135deg, #5B21B6, #7C3AED, #6D28D9);
+}
+
+/* حالة منخفض — برتقالي */
+.balance-card-orange {
+    background: linear-gradient(135deg, #B45309, #D97706, #F59E0B);
+}
+
+/* حالة سالب / مديون — أحمر */
+.balance-card-red {
+    background: linear-gradient(135deg, #991B1B, #DC2626, #EF4444);
+}
+
+/* نقاط الخلفية الزخرفية */
+.dots-pattern {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.08) 1.5px, transparent 1.5px);
+    background-size: 20px 20px;
+    pointer-events: none;
+}
+
+/* أنيميشن نبض للرصيد السالب */
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.75; }
+}
+
+.balance-card-red #balance-amount {
+    animation: pulse-red 2s ease-in-out infinite;
+}
+
+/* أنيميشن ظهور البطاقة */
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+#balance-card {
+    animation: slideDown 0.5s ease-out;
+}
