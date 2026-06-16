@@ -43,10 +43,15 @@ async function fetchMetaCampaignsSpend() {
             const currentLine = lines[i].trim();
             if (!currentLine) continue;
             const columns = currentLine.split(',');
-            const campaignName = columns[0]?.replace(/["']/g, '').trim();
-            const spendValue = parseFloat(columns[1]?.replace(/["']/g, '').trim()) || 0;
-            if (campaignName) {
-                campaigns.push({ name: campaignName, insights: { data: [{ spend: spendValue }] } });
+            const campaignId   = columns[0]?.replace(/["']/g, '').trim();
+            const campaignName = columns[1]?.replace(/["']/g, '').trim();
+            const spendValue   = parseFloat(columns[2]?.replace(/["']/g, '').trim()) || 0;
+            if (campaignId && campaignName) {
+                campaigns.push({
+                    id:       campaignId,
+                    name:     campaignName,
+                    insights: { data: [{ spend: spendValue }] }
+                });
             }
         }
         console.log("✅ تم المعالجة بنجاح! عدد الحملات:", campaigns.length);
@@ -55,6 +60,78 @@ async function fetchMetaCampaignsSpend() {
         console.error("❌ خطأ أثناء معالجة قوقل شيت:", e.message);
         return [];
     }
+}
+
+// ==========================================
+//  مزامنة الحملات من Google Sheets إلى Supabase
+// ==========================================
+async function syncCampaignsToSupabase(campaigns) {
+    if (!campaigns || campaigns.length === 0) return;
+
+    console.log("🔄 جاري مزامنة الحملات مع Supabase...");
+
+    // بناء مصفوفة الحملات للرفع
+    const upsertData = campaigns.map(camp => ({
+        campaign_id:         camp.id,
+        campaign_name:       camp.name,
+        facebook_spend_euro: parseFloat(camp.insights?.data?.[0]?.spend || 0),
+        updated_at:          new Date().toISOString()
+    }));
+
+    // upsert: يحدّث إذا موجود، يضيف إذا جديد — بدون حذف أي شيء
+    const { error } = await _supabase
+        .from('facebook_campaigns')
+        .upsert(upsertData, {
+            onConflict:       'campaign_id',
+            ignoreDuplicates: false
+        });
+
+    if (error) {
+        console.error("❌ فشل المزامنة مع Supabase:", error.message);
+    } else {
+        console.log(`✅ تمت المزامنة بنجاح! ${upsertData.length} حملة محدّثة في Supabase.`);
+    }
+}
+
+// ==========================================
+//  جلب الحملات من Supabase (بديل سريع)
+// ==========================================
+async function getCampaignsFromSupabase() {
+    const { data, error } = await _supabase
+        .from('facebook_campaigns')
+        .select('campaign_name, facebook_spend_euro');
+
+    if (error || !data || data.length === 0) return null;
+
+    // تحويل البيانات لنفس شكل fetchMetaCampaignsSpend
+    return data.map(row => ({
+        name:     row.campaign_name,
+        insights: { data: [{ spend: row.facebook_spend_euro }] }
+    }));
+}
+
+// ==========================================
+//  الدالة الرئيسية: جلب + مزامنة ذكية
+// ==========================================
+async function getAndSyncCampaigns() {
+    // 1. جلب من Google Sheets
+    const freshCampaigns = await fetchMetaCampaignsSpend();
+
+    // 2. مزامنة في الخلفية (لا تنتظر)
+    if (freshCampaigns.length > 0) {
+        syncCampaignsToSupabase(freshCampaigns); // بدون await عشان ما تبطئ الصفحة
+        return freshCampaigns;
+    }
+
+    // 3. إذا فشل Google Sheets، رجّع من Supabase كاحتياطي
+    console.warn("⚠️ Google Sheets فشل، جاري الرجوع لـ Supabase...");
+    const cached = await getCampaignsFromSupabase();
+    if (cached) {
+        console.log("✅ تم جلب البيانات من Supabase كاحتياط.");
+        return cached;
+    }
+
+    return [];
 }
 
 function calculateSpendForKeyword(campaigns, keyword) {
@@ -72,7 +149,7 @@ function calculateSpendForKeyword(campaigns, keyword) {
 //  تحميل بيانات لوحة تحكم الأدمن
 // ==========================================
 async function loadAdminData() {
-    const metaCampaigns = await fetchMetaCampaignsSpend();
+    const metaCampaigns = await getAndSyncCampaigns();
     let { data: clients } = await _supabase.from('clients').select('*').eq('role', 'client').order('created_at', { ascending: false });
     const adminTable = document.getElementById('admin-clients-table');
     adminTable.innerHTML = '';
@@ -419,7 +496,7 @@ async function handleAiInsert(client, data) {
 
 async function handleAiQuery(client, data) {
     if (data.query_type === 'balance') {
-        const metaCampaigns = await fetchMetaCampaignsSpend();
+        const metaCampaigns = await getAndSyncCampaigns();
         let totalSpendEuro = 0;
         metaCampaigns.forEach(camp => {
             if (camp.name.toLowerCase().includes(client.campaign_keyword.toLowerCase())) {
@@ -446,7 +523,7 @@ async function handleAiQuery(client, data) {
             speakAndStatus(`الدفعة الأخيرة للزبون ${client.name} كانت بتاريخ ${pDate} بقيمة ${lastPayment.amount_dzd.toLocaleString('fr-FR')} دينار جزائري.`);
         }
     } else if (data.query_type === 'last_campaign') {
-        const metaCampaigns = await fetchMetaCampaignsSpend();
+        const metaCampaigns = await getAndSyncCampaigns();
         let lastCamp = metaCampaigns.find(camp => camp.name.toLowerCase().includes(client.campaign_keyword.toLowerCase()));
         if (lastCamp && lastCamp.insights?.data?.[0]) {
             let spendEuro = parseFloat(lastCamp.insights.data[0].spend || 0);

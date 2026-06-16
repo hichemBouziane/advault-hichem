@@ -2,13 +2,25 @@ const SUPABASE_URL = "https://uljdazwcjxogpymvbflq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const CLEAN_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHi9J9axOomtAw1vM9Y2VE_vHkOPwO77R2MDBiKKJfC3yXynHjBTaUzO1hFs3AEeZTmhEu9gBwHDDq/pub?gid=1473599105&single=true&output=csv";
-
 // ضع هنا رقم بطاقتك Redotpay
-const REDOTPAY_ID = "1999499801";
+const REDOTPAY_ID = "ضع_هنا_ID_بطاقتك";
 
 // ===== حد الرصيد المنخفض (بالدينار) =====
 const LOW_BALANCE_THRESHOLD = 10000;
+
+// ==========================================
+//  جلب الحملات من Supabase مباشرة
+// ==========================================
+async function getCampaignsFromSupabase() {
+    const { data, error } = await _supabase
+        .from('facebook_campaigns')
+        .select('campaign_name, facebook_spend_euro');
+    if (error || !data || data.length === 0) return [];
+    return data.map(row => ({
+        name:     row.campaign_name,
+        insights: { data: [{ spend: row.facebook_spend_euro }] }
+    }));
+}
 
 // التحقق من تسجيل الدخول
 const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -16,33 +28,6 @@ if (!user || user.role !== 'client') {
     window.location.href = 'index.html';
 }
 document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
-
-// ==========================================
-//  جلب بيانات الحملات من Google Sheets
-// ==========================================
-async function fetchMetaCampaignsSpend() {
-    try {
-        const response = await fetch(CLEAN_SHEET_URL, { cache: "no-store" });
-        if (!response.ok) throw new Error("فشل الاتصال");
-        const rawText = await response.text();
-        const lines = rawText.split('\n');
-        const campaigns = [];
-        for (let i = 1; i < lines.length; i++) {
-            const currentLine = lines[i].trim();
-            if (!currentLine) continue;
-            const columns = currentLine.split(',');
-            const campaignName = columns[0]?.replace(/["']/g, '').trim();
-            const spendValue = parseFloat(columns[1]?.replace(/["']/g, '').trim()) || 0;
-            if (campaignName) {
-                campaigns.push({ name: campaignName, insights: { data: [{ spend: spendValue }] } });
-            }
-        }
-        return campaigns;
-    } catch (e) {
-        console.error("خطأ في جلب Google Sheets:", e.message);
-        return [];
-    }
-}
 
 // ==========================================
 //  تحديث بطاقة الرصيد حسب الحالة
@@ -100,7 +85,7 @@ function updateBalanceCard(finalDebtDzd, exchangeRate) {
 //  تحميل بيانات الزبون الكاملة
 // ==========================================
 async function loadClientData(client) {
-    const metaCampaigns = await fetchMetaCampaignsSpend();
+    const metaCampaigns = await getCampaignsFromSupabase();
 
     // حساب المصاريف حسب الكلمة المفتاحية
     let totalSpendEuro = 0;
