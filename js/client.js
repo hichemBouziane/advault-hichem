@@ -12,6 +12,13 @@ const LOW_BALANCE_THRESHOLD = 10000;
 
 
 
+
+
+
+
+
+
+
 // ==========================================
 //  جلب الحملات من Supabase مباشرة
 // ==========================================
@@ -21,7 +28,7 @@ async function getCampaignsFromSupabase() {
         .select('campaign_name, facebook_spend_euro');
     if (error || !data || data.length === 0) return [];
     return data.map(row => ({
-        name:     row.campaign_name,
+        name: row.campaign_name,
         insights: { data: [{ spend: row.facebook_spend_euro }] }
     }));
 }
@@ -37,33 +44,33 @@ document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}
 //  تحديث بطاقة الرصيد حسب الحالة
 // ==========================================
 function updateBalanceCard(finalDebtDzd, exchangeRate) {
-    const card       = document.getElementById('balance-card');
-    const amountEl   = document.getElementById('balance-amount');
-    const messageEl  = document.getElementById('balance-message');
-    const payBtn     = document.getElementById('pay-btn');
+    const card = document.getElementById('balance-card');
+    const amountEl = document.getElementById('balance-amount');
+    const messageEl = document.getElementById('balance-message');
+    const payBtn = document.getElementById('pay-btn');
 
     // تنسيق الرقم
     const formatted = Math.abs(finalDebtDzd).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
 
     // حالة 1: رصيد سالب (مديون)
     if (finalDebtDzd > 0) {
-        card.className      = 'balance-card-red mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
-        amountEl.innerText  = `- ${formatted} دج`;
+        card.className = 'balance-card-red mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
+        amountEl.innerText = `- ${formatted} دج`;
         messageEl.innerHTML = '⚠️ لديك مستحقات متأخرة، يرجى التسوية';
         payBtn.classList.remove('hidden');
-        payBtn.className    = 'bg-white text-red-600 font-bold px-6 py-2.5 rounded-2xl text-sm shadow-lg hover:bg-red-50 transition cursor-pointer';
+        payBtn.className = 'bg-white text-red-600 font-bold px-6 py-2.5 rounded-2xl text-sm shadow-lg hover:bg-red-50 transition cursor-pointer';
 
-    // حالة 2: رصيد منخفض أو صفر قريباً
+        // حالة 2: رصيد منخفض أو صفر قريباً
     } else if (finalDebtDzd < 0 && Math.abs(finalDebtDzd) < LOW_BALANCE_THRESHOLD) {
-        card.className      = 'balance-card-orange mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
-        amountEl.innerText  = `${formatted} دج`;
+        card.className = 'balance-card-orange mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
+        amountEl.innerText = `${formatted} دج`;
         messageEl.innerHTML = '📉 رصيدك المتبقي منخفض، جدده قريباً';
         payBtn.classList.add('hidden');
 
-    // حالة 3: حساب نظيف / رصيد مريح
+        // حالة 3: حساب نظيف / رصيد مريح
     } else {
-        card.className      = 'balance-card-purple mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
-        amountEl.innerText  = finalDebtDzd === 0 ? '0 دج ✅' : `${formatted} دج ✅`;
+        card.className = 'balance-card-purple mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
+        amountEl.innerText = finalDebtDzd === 0 ? '0 دج ✅' : `${formatted} دج ✅`;
         messageEl.innerHTML = '✅ حسابك نظيف، شكراً لك!';
         payBtn.classList.add('hidden');
     }
@@ -76,13 +83,13 @@ function updateBalanceCard(finalDebtDzd, exchangeRate) {
     }
 
     // تحديث نافذة الدفع
-    const absDzd   = Math.abs(finalDebtDzd);
+    const absDzd = Math.abs(finalDebtDzd);
     const usdAmount = (absDzd / (exchangeRate || 240)).toFixed(2);
     document.getElementById('modal-balance').innerHTML = `
         <span class="text-2xl font-bold text-red-600">${absDzd.toLocaleString('fr-FR')} دج</span>
         <span class="block text-sm font-semibold text-gray-400 mt-1">≈ ${usdAmount} $</span>
     `;
-    document.getElementById('redotpay-id').innerText   = REDOTPAY_ID;
+    document.getElementById('redotpay-id').innerText = REDOTPAY_ID;
 }
 
 // ==========================================
@@ -114,14 +121,14 @@ async function loadClientData(client) {
     let totalPaidEuro = payments?.reduce((sum, item) => sum + parseFloat(item.amount_euro || 0), 0) || 0;
 
     // حساب الرصيد بالدينار
-    let remainingEuro  = totalSpendWithProfit - totalPaidEuro;
-    let finalDebtDzd   = Math.round(remainingEuro * (client.exchange_rate || 240));
+    let remainingEuro = totalSpendWithProfit - totalPaidEuro;
+    let finalDebtDzd = Math.round(remainingEuro * (client.exchange_rate || 240));
 
     // تحديث بطاقة الرصيد
     updateBalanceCard(finalDebtDzd, client.exchange_rate || 240);
 
     // تحديث البطاقات الإحصائية
-    document.getElementById('client-total-ads').innerText  = `${totalSpendWithProfit.toFixed(2)} €`;
+    document.getElementById('client-total-ads').innerText = `${totalSpendWithProfit.toFixed(2)} €`;
     document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} €`;
 
     // تحديث جدول المدفوعات

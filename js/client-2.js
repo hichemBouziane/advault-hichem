@@ -13,6 +13,17 @@ if (!user || user.role !== 'client') {
 // تعيين اسم المستخدم
 document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
 
+
+
+
+
+
+
+
+
+
+
+
 // جلب بيانات الحملات من Google Sheets
 async function fetchMetaCampaignsSpend() {
     try {

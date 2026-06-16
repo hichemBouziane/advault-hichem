@@ -43,13 +43,13 @@ async function fetchMetaCampaignsSpend() {
             const currentLine = lines[i].trim();
             if (!currentLine) continue;
             const columns = currentLine.split(',');
-            const campaignId   = columns[0]?.replace(/["']/g, '').trim();
+            const campaignId = columns[0]?.replace(/["']/g, '').trim();
             const campaignName = columns[1]?.replace(/["']/g, '').trim();
-            const spendValue   = parseFloat(columns[2]?.replace(/["']/g, '').trim()) || 0;
+            const spendValue = parseFloat(columns[2]?.replace(/["']/g, '').trim()) || 0;
             if (campaignId && campaignName) {
                 campaigns.push({
-                    id:       campaignId,
-                    name:     campaignName,
+                    id: campaignId,
+                    name: campaignName,
                     insights: { data: [{ spend: spendValue }] }
                 });
             }
@@ -72,17 +72,17 @@ async function syncCampaignsToSupabase(campaigns) {
 
     // بناء مصفوفة الحملات للرفع
     const upsertData = campaigns.map(camp => ({
-        campaign_id:         camp.id,
-        campaign_name:       camp.name,
+        campaign_id: camp.id,
+        campaign_name: camp.name,
         facebook_spend_euro: parseFloat(camp.insights?.data?.[0]?.spend || 0),
-        updated_at:          new Date().toISOString()
+        updated_at: new Date().toISOString()
     }));
 
     // upsert: يحدّث إذا موجود، يضيف إذا جديد — بدون حذف أي شيء
     const { error } = await _supabase
         .from('facebook_campaigns')
         .upsert(upsertData, {
-            onConflict:       'campaign_id',
+            onConflict: 'campaign_id',
             ignoreDuplicates: false
         });
 
@@ -105,7 +105,7 @@ async function getCampaignsFromSupabase() {
 
     // تحويل البيانات لنفس شكل fetchMetaCampaignsSpend
     return data.map(row => ({
-        name:     row.campaign_name,
+        name: row.campaign_name,
         insights: { data: [{ spend: row.facebook_spend_euro }] }
     }));
 }

@@ -14,6 +14,15 @@ function calculateInstantProfits() {
     const companyProfit = totalProfit * FINANCIAL_CONFIG.companyShare;
     const myProfit = totalProfit * FINANCIAL_CONFIG.myShare;
 
+
+
+
+
+
+
+
+
+
     // عرض المخرجات
     document.getElementById('res-total').innerText = amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " دج";
     document.getElementById('res-capital').innerText = adCapital.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " دج";

@@ -12,6 +12,17 @@ function getDateRange(filterType) {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
+
+
+
+
+
+
+
+
+
+
+
     switch (filterType) {
         case 'today':
             break;

@@ -13,6 +13,18 @@ async function handleLogin() {
         return;
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
     const { data, error } = await _supabase
         .from('clients')
         .select('*')

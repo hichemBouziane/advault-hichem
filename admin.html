@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,12 +10,13 @@
     <link rel="stylesheet" href="css/admin.css">
     <script>
         // التحقق المبكر من الصلاحية قبل تحميل الصفحة
-        (function() {
+        (function () {
             const _u = JSON.parse(localStorage.getItem('currentUser'));
             if (!_u || _u.role !== 'admin') { window.location.href = 'index.html'; }
         })();
     </script>
 </head>
+
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
     <!-- الهيدر -->
@@ -24,9 +26,15 @@
             <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-md font-semibold">مدير النظام</span>
         </div>
         <div class="flex items-center gap-3">
-            <a href="analytics.html" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">📊 لوحة التحليلات</a>
-            <a href="calculator.html" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">🧮 الحاسبة السريعة</a>
-            <button onclick="handleLogout()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">تسجيل الخروج</button>
+            <a href="analytics.html"
+                class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">📊
+                لوحة التحليلات</a>
+            <a href="calculator.html"
+                class="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">🧮
+                الحاسبة السريعة</a>
+            <button onclick="handleLogout()"
+                class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">تسجيل
+                الخروج</button>
         </div>
     </header>
 
@@ -34,9 +42,14 @@
 
         <!-- أزرار الإجراءات السريعة -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button onclick="openModal('client-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center">+ إضافة زبون جديد</button>
-            <button class="bg-emerald-600 text-gray-200 p-4 rounded-xl font-bold shadow opacity-50 cursor-not-allowed text-center">قريباً تسجيل إعلان</button>
-            <button onclick="document.getElementById('payment-modal').classList.remove('hidden'); openPaymentModal();" class="bg-amber-500 hover:bg-amber-600 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center transition">
+            <button onclick="openModal('client-modal')"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center">+
+                إضافة زبون جديد</button>
+            <button
+                class="bg-emerald-600 text-gray-200 p-4 rounded-xl font-bold shadow opacity-50 cursor-not-allowed text-center">قريباً
+                تسجيل إعلان</button>
+            <button onclick="document.getElementById('payment-modal').classList.remove('hidden'); openPaymentModal();"
+                class="bg-amber-500 hover:bg-amber-600 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center transition">
                 💰 تسجيل دفعة جديدة
             </button>
         </div>
@@ -46,14 +59,17 @@
             <h3 class="text-lg font-bold mb-2 flex items-center gap-2">
                 <span>🤖 المساعد الصوتي الذكي (خاص بالأدمن)</span>
             </h3>
-            <p class="text-xs text-indigo-200 mb-4">اضغط على المايك وتكلم بالدارجة الجزائرية لتسجيل الدفعات تلقائياً (مثال: "سجل منير عطاني عشرين آلاف")</p>
+            <p class="text-xs text-indigo-200 mb-4">اضغط على المايك وتكلم بالدارجة الجزائرية لتسجيل الدفعات تلقائياً
+                (مثال: "سجل منير عطاني عشرين آلاف")</p>
             <div class="flex items-center gap-4">
-                <button id="voice-btn" onclick="startVoiceRecognition()" class="bg-white text-indigo-700 hover:bg-indigo-50 p-4 rounded-full shadow-lg transition duration-200 cursor-pointer flex items-center justify-center">
+                <button id="voice-btn" onclick="startVoiceRecognition()"
+                    class="bg-white text-indigo-700 hover:bg-indigo-50 p-4 rounded-full shadow-lg transition duration-200 cursor-pointer flex items-center justify-center">
                     <span id="mic-icon" class="text-xl">🎙️</span>
                 </button>
                 <div class="flex-1">
                     <p id="voice-status" class="text-sm font-semibold text-indigo-100">جاهز للاستماع...</p>
-                    <p id="voice-result-text" class="text-xs text-indigo-200 italic mt-1 bg-indigo-900/30 p-2 rounded-lg hidden"></p>
+                    <p id="voice-result-text"
+                        class="text-xs text-indigo-200 italic mt-1 bg-indigo-900/30 p-2 rounded-lg hidden"></p>
                 </div>
             </div>
         </div>
@@ -74,7 +90,9 @@
                         </tr>
                     </thead>
                     <tbody id="admin-clients-table" class="divide-y divide-gray-100 text-sm">
-                        <tr><td colspan="6" class="p-4 text-center text-gray-400">جاري جلب البيانات...</td></tr>
+                        <tr>
+                            <td colspan="6" class="p-4 text-center text-gray-400">جاري جلب البيانات...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -89,38 +107,47 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold mb-1">اسم الزبون الكامل</label>
-                    <input type="text" id="new-client-name" placeholder="Mounir Sahwan" class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    <input type="text" id="new-client-name" placeholder="Mounir Sahwan"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold mb-1">رقم الهاتف</label>
-                    <input type="text" id="new-client-phone" placeholder="0550932571" class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    <input type="text" id="new-client-phone" placeholder="0550932571"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold mb-1">البريد الإلكتروني</label>
-                    <input type="email" id="new-client-email" placeholder="mounir@email.com" class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    <input type="email" id="new-client-email" placeholder="mounir@email.com"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold mb-1">كلمة السر</label>
-                    <input type="password" id="new-client-pass" placeholder="••••••••" class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    <input type="password" id="new-client-pass" placeholder="••••••••"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold mb-1">الكلمة المفتاحية للحملة</label>
-                    <input type="text" id="new-client-keyword" placeholder="monir" class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    <input type="text" id="new-client-keyword" placeholder="monir"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold mb-1">سعر الصرف</label>
-                    <input type="number" id="new-client-rate" value="254" class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    <input type="number" id="new-client-rate" value="254"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
                 </div>
                 <div class="flex space-x-2 space-x-reverse pt-2">
-                    <button onclick="saveNewClient()" class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-xl text-sm">حفظ</button>
-                    <button onclick="closeClientModal()" class="px-4 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">إلغاء</button>
+                    <button onclick="saveNewClient()"
+                        class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-xl text-sm">حفظ</button>
+                    <button onclick="closeClientModal()"
+                        class="px-4 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm">إلغاء</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- ===== نافذة تسجيل دفعة جديدة يدوياً ===== -->
-    <div id="payment-modal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div id="payment-modal"
+        class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
             <div class="bg-amber-500 p-4 text-white text-center font-bold text-lg">
                 💰 تسجيل دفعة مالية جديدة
@@ -128,33 +155,40 @@
             <form id="manual-payment-form" onsubmit="submitManualPayment(event)" class="p-6 space-y-4">
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">اختر الزبون:</label>
-                    <select id="pop-client-select" required onchange="updateEuroFromDzd()" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
+                    <select id="pop-client-select" required onchange="updateEuroFromDzd()"
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
                         <option value="">-- جاري تحميل قائمة الزبائن... --</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (دج):</label>
-                        <input type="number" id="pop-amount-dzd" oninput="updateEuroFromDzd()" placeholder="0" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center">
+                        <input type="number" id="pop-amount-dzd" oninput="updateEuroFromDzd()" placeholder="0" required
+                            class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center">
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (يورو €):</label>
-                        <input type="number" step="0.01" id="pop-amount-euro" placeholder="0.00" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center bg-amber-50/50">
+                        <input type="number" step="0.01" id="pop-amount-euro" placeholder="0.00" required
+                            class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center bg-amber-50/50">
                     </div>
                 </div>
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">تاريخ الدفعة:</label>
-                    <input type="date" id="pop-payment-date" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center">
+                    <input type="date" id="pop-payment-date" required
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center">
                 </div>
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">ملاحظة الدفعة:</label>
-                    <input type="text" id="pop-payment-note" value="Versement" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <input type="text" id="pop-payment-note" value="Versement"
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
                 <div class="flex gap-3 pt-2">
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow cursor-pointer">
+                    <button type="submit"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow cursor-pointer">
                         ✅ حفظ وتوزيع الأرباح
                     </button>
-                    <button type="button" onclick="closePaymentModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer text-center">
+                    <button type="button" onclick="closePaymentModal()"
+                        class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer text-center">
                         إلغاء
                     </button>
                 </div>
@@ -163,11 +197,13 @@
     </div>
 
     <!-- ===== نافذة دفعات الزبون ===== -->
-    <div id="client-payments-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div id="client-payments-modal"
+        class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
             <div class="bg-indigo-600 p-4 text-white flex justify-between items-center">
                 <h3 class="font-bold text-lg" id="payments-modal-title">دفعات الزبون</h3>
-                <button onclick="closePaymentsModal()" class="text-white hover:text-indigo-200 text-xl cursor-pointer">✕</button>
+                <button onclick="closePaymentsModal()"
+                    class="text-white hover:text-indigo-200 text-xl cursor-pointer">✕</button>
             </div>
             <div class="p-6 max-h-[70vh] overflow-y-auto">
                 <table class="w-full text-right text-sm">
@@ -182,13 +218,15 @@
                     </thead>
                     <tbody id="client-payments-list" class="divide-y divide-gray-100"></tbody>
                 </table>
-                <div id="no-payments-msg" class="hidden text-center py-8 text-gray-400">لا توجد دفعات مسجلة لهذا الزبون</div>
+                <div id="no-payments-msg" class="hidden text-center py-8 text-gray-400">لا توجد دفعات مسجلة لهذا الزبون
+                </div>
             </div>
         </div>
     </div>
 
     <!-- ===== نافذة تعديل الدفعة ===== -->
-    <div id="edit-payment-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+    <div id="edit-payment-modal"
+        class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
             <div class="bg-amber-500 p-4 text-white text-center font-bold text-lg">
                 ✏️ تعديل الدفعة
@@ -197,25 +235,31 @@
                 <input type="hidden" id="edit-payment-id">
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (دج):</label>
-                    <input type="number" id="edit-amount-dzd" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center font-bold">
+                    <input type="number" id="edit-amount-dzd"
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center font-bold">
                 </div>
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (يورو €):</label>
-                    <input type="number" step="0.01" id="edit-amount-euro" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center font-bold">
+                    <input type="number" step="0.01" id="edit-amount-euro"
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center font-bold">
                 </div>
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">التاريخ:</label>
-                    <input type="date" id="edit-payment-date" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center">
+                    <input type="date" id="edit-payment-date"
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center">
                 </div>
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">ملاحظة:</label>
-                    <input type="text" id="edit-payment-note" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <input type="text" id="edit-payment-note"
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
                 <div class="flex gap-3 pt-2">
-                    <button onclick="saveEditedPayment()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                    <button onclick="saveEditedPayment()"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
                         ✅ حفظ التعديلات
                     </button>
-                    <button onclick="document.getElementById('edit-payment-modal').classList.add('hidden')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                    <button onclick="document.getElementById('edit-payment-modal').classList.add('hidden')"
+                        class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
                         إلغاء
                     </button>
                 </div>
@@ -226,7 +270,26 @@
 
 
 
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     <script src="js/admin.js"></script>
 </body>
+
 </html>
