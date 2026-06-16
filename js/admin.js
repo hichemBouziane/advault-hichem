@@ -181,12 +181,22 @@ async function loadAdminData() {
     });
 }
 
+
+
+
 // ==========================================
 //  إدارة نافذة إضافة زبون جديد
 // ==========================================
+
+
+
+
 function openModal(id) {
     if (id === 'client-modal') document.getElementById('client-modal').classList.remove('hidden');
 }
+
+
+
 
 function closeClientModal() {
     document.getElementById('client-modal').classList.add('hidden');
@@ -204,6 +214,10 @@ async function saveNewClient() {
     closeClientModal();
     loadAdminData();
 }
+
+
+
+
 
 // ==========================================
 //  إدارة نافذة تسجيل الدفعات اليدوية
