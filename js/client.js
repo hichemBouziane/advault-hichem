@@ -3,22 +3,10 @@ const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ضع هنا رقم بطاقتك Redotpay
-const REDOTPAY_ID = "0000000000";
+const REDOTPAY_ID = "1999499801";
 
 // ===== حد الرصيد المنخفض (بالدينار) =====
 const LOW_BALANCE_THRESHOLD = 10000;
-
-
-
-
-
-
-
-
-
-
-
-
 // ==========================================
 //  جلب الحملات من Supabase مباشرة
 // ==========================================
