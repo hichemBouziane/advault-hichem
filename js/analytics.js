@@ -1,7 +1,7 @@
 // ✅ بيانات Supabase الصحيحة
-const SUPABASE_URL = "https://uljdazwcjxogpymvbflq.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.SUPABASE_URL = window.SUPABASE_URL || "https://uljdazwcjxogpymvbflq.supabase.co";
+window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
+window._supabase = window._supabase || supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 // حساب نطاق التواريخ بناءً على الفلتر المختار
 function getDateRange(filterType) {

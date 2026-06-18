@@ -1,16 +1,15 @@
 // ==========================================
 //  إعدادات Supabase
 // ==========================================
-const SUPABASE_URL = "https://uljdazwcjxogpymvbflq.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.SUPABASE_URL = window.SUPABASE_URL || "https://uljdazwcjxogpymvbflq.supabase.co";
+window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
+window._supabase = window._supabase || supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 // ==========================================
 //  إعدادات Meta & Gemini
 // ==========================================
-const META_ACCESS_TOKEN = "ضع_هنا_توكن_ميتا_الخاص_بالمطورين";
-const META_AD_ACCOUNT_ID = "act_ضع_هنا_رقم_الحساب_الاعلاني";
-const GEMINI_API_KEY = "AQ.Ab8RN6KeOoitkHChvbjn6l25tyPeGwMxjuhRPlg-Bz789QLDFg";
+
+window.GEMINI_API_KEY = window.GEMINI_API_KEY || "AQ.Ab8RN6KeOoitkHChvbjn6l25tyPeGwMxjuhRPlg-Bz789QLDFg";
 
 // ==========================================
 //  تهيئة الصفحة عند التحميل
@@ -25,7 +24,85 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
     loadAdminData();
+    fetchHeaderBalance(); // استدعاء دالة جلب الرصيد للهيدر
 });
+
+// ==========================================
+//  جلب الرصيد العام من قوقل شيت وعرضه في الهيدر
+// ==========================================
+async function fetchHeaderBalance() {
+    const BALANCE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHi9J9axOomtAw1vM9Y2VE_vHkOPwO77R2MDBiKKJfC3yXynHjBTaUzO1hFs3AEeZTmhEu9gBwHDDq/pub?gid=377665608&single=true&output=csv";
+    try {
+        const response = await fetch(BALANCE_SHEET_URL, { cache: "no-store" });
+        if (!response.ok) throw new Error("فشل الاتصال بملف الرصيد");
+        
+        const rawText = await response.text();
+        // استخراج السطر الأول وتقسيمه لجلب الخلية A1 و B1
+        const firstLine = rawText.split('\n')[0];
+        const columns = firstLine.split(',');
+        let a1Value = columns[0] ? columns[0].replace(/["']/g, '').trim() : "0";
+        let b1Value = columns[1] ? columns[1].replace(/["']/g, '').trim() : "292";
+        
+        // تحويل الفاصلة العادية إلى نقطة عشرية ليقرأها الجافاسكربت بشكل صحيح
+        let normalizedValue = a1Value.replace(',', '.');
+        const parsedValue = parseFloat(normalizedValue);
+
+        // 1. تحديث قيمة الـ Spend الحالي (مكان الـ 0.00)
+        const fbSpendEl = document.getElementById('fb-current-spend');
+        if (fbSpendEl) {
+            if (!isNaN(parsedValue)) {
+                // عرض الرقم بالصيغة المحلية (يمكنك تغييرها إلى 'en-US' إذا كنت تفضل النقطة)
+                fbSpendEl.innerText = parsedValue.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            } else {
+                fbSpendEl.innerText = a1Value; // في حال فشل التحويل يعرض النص الخام
+            }
+        }
+
+        // 2. تحديث شريط التقدم (Progress Bar) تلقائياً بناءً على العتبة المستخرجة من B1
+        let normalizedThreshold = b1Value.replace(',', '.');
+        const maxThreshold = parseFloat(normalizedThreshold) || 292;
+
+        const fbMaxEl = document.getElementById('fb-max-spend');
+        if (fbMaxEl) {
+            fbMaxEl.innerText = maxThreshold.toLocaleString('fr-FR');
+        }
+
+        const progressBar = document.getElementById('fb-progress-bar');
+        if (progressBar && !isNaN(parsedValue)) {
+            // حساب النسبة المئوية بحيث لا تتخطى 100%
+            let percentage = (parsedValue / maxThreshold) * 100;
+            percentage = Math.min(Math.max(percentage, 0), 100); 
+            
+            // تحديث عرض الأنميشن للشريط
+            progressBar.style.width = `${percentage}%`;
+
+            // إزالة جميع الألوان السابقة لتفادي التداخل
+            progressBar.classList.remove('bg-indigo-600', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-red-600');
+
+            // تطبيق اللون الجديد حسب نسبة الخطورة
+            if (percentage <= 25) {
+                progressBar.classList.add('bg-emerald-500');
+            } else if (percentage <= 50) {
+                progressBar.classList.add('bg-purple-500');
+            } else if (percentage <= 75) {
+                progressBar.classList.add('bg-amber-500');
+            } else {
+                progressBar.classList.add('bg-red-600');
+            }
+        }
+
+        // 3. تحديث عنصر الهيدر الرئيسي (إذا كنت ما زلت تستخدمه)
+        const balanceEl = document.getElementById('header-balance');
+        if (balanceEl) {
+            balanceEl.innerText = isNaN(parsedValue) ? a1Value : `${parsedValue.toLocaleString('fr-FR')} €`;
+        }
+
+    } catch (e) {
+        console.error("❌ خطأ في جلب الرصيد وتحديث البيانات:", e.message);
+        const fbSpendEl = document.getElementById('fb-current-spend');
+        if (fbSpendEl) fbSpendEl.innerText = "خطأ!";
+    }
+}
 
 // ==========================================
 //  جلب بيانات الحملات من Google Sheets
@@ -114,24 +191,18 @@ async function getCampaignsFromSupabase() {
 //  الدالة الرئيسية: جلب + مزامنة ذكية
 // ==========================================
 async function getAndSyncCampaigns() {
-    // 1. جلب من Google Sheets
-    const freshCampaigns = await fetchMetaCampaignsSpend();
-
-    // 2. مزامنة في الخلفية (لا تنتظر)
-    if (freshCampaigns.length > 0) {
-        syncCampaignsToSupabase(freshCampaigns); // بدون await عشان ما تبطئ الصفحة
-        return freshCampaigns;
-    }
-
-    // 3. إذا فشل Google Sheets، رجّع من Supabase كاحتياطي
-    console.warn("⚠️ Google Sheets فشل، جاري الرجوع لـ Supabase...");
+    // 1. العرض الفوري من قاعدة البيانات (للسرعة)
     const cached = await getCampaignsFromSupabase();
-    if (cached) {
-        console.log("✅ تم جلب البيانات من Supabase كاحتياط.");
-        return cached;
-    }
 
-    return [];
+    // 2. التحديث في الخلفية من Google Sheets إلى Supabase
+    fetchMetaCampaignsSpend().then(freshCampaigns => {
+        if (freshCampaigns.length > 0) {
+            syncCampaignsToSupabase(freshCampaigns);
+        }
+    }).catch(err => console.error("خطأ التحديث الخلفي:", err));
+
+    // 3. إرجاع البيانات المخزنة فوراً
+    return cached || [];
 }
 
 function calculateSpendForKeyword(campaigns, keyword) {

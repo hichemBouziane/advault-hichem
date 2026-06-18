@@ -20,25 +20,104 @@
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
     <!-- الهيدر -->
-    <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+    <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center gap-4 flex-wrap">
         <div>
             <h1 class="text-xl font-bold text-gray-800" id="user-welcome">لوحة تحكم المدير</h1>
             <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-md font-semibold">مدير النظام</span>
         </div>
-        <div class="flex items-center gap-3">
-            <a href="analytics.html"
-                class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">📊
-                لوحة التحليلات</a>
-            <a href="calculator.html"
-                class="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">🧮
-                الحاسبة السريعة</a>
-            <button onclick="handleLogout()"
-                class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">تسجيل
-                الخروج</button>
+
+        <!-- شريط حالة عتبة الدفع (فيسبوك) -->
+        <div class="flex-1 max-w-md mx-auto w-full order-last md:order-none" id="fb-billing-container">
+            <div class="flex justify-between items-end mb-1">
+                <span class="text-xs font-bold text-gray-600">💳 اقتراب سحب الرصيد (الفوترة)</span>
+                <span class="text-xs font-bold text-indigo-600"><span id="fb-current-spend">0.00</span> / <span id="fb-max-spend">292</span> $</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden shadow-inner">
+                <div id="fb-progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+            </div>
         </div>
+
+        <button onclick="openMenu()" class="text-gray-600 hover:text-indigo-600 transition cursor-pointer p-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        </button>
     </header>
 
     <main class="p-6 flex-1 space-y-6">
+
+        <!-- ===== مركز التحليلات والتقارير المالية ===== -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">📊 مركز التحليلات والتقارير المالية</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">ملخص حقيقي للأرباح، المصاريف، ورؤوس الأموال بناءً على التواريخ</p>
+                </div>
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <label for="date-filter" class="text-sm font-bold text-gray-600 whitespace-nowrap">فترة التقرير:</label>
+                    <select id="date-filter" onchange="if(typeof loadAnalyticsData === 'function') loadAnalyticsData()"
+                        class="bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm w-full md:w-56 cursor-pointer">
+                        <option value="today" selected>اليوم فقط</option>
+                        <option value="yesterday">أمس</option>
+                        <option value="7days">آخر 7 أيام</option>
+                        <option value="30days">آخر 30 يوم</option>
+                        <option value="this_month">هذا الشهر</option>
+                        <option value="last_month">الشهر الماضي</option>
+                        <option value="this_year">هذه السنة</option>
+                        <option value="all">كل الأوقات</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-gray-50 rounded-xl border border-gray-100 p-4 flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-1">إجمالي المبالغ المستلمة</span>
+                        <h3 id="stat-received" class="text-xl font-bold text-gray-800">0.00 دج</h3>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-xl border border-gray-100 p-4 flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-blue-500 block uppercase mb-1">مصاريف الإعلانات (رأس المال)</span>
+                        <h3 id="stat-capital" class="text-xl font-bold text-blue-700">0.00 دج</h3>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-xl border border-gray-100 p-4 flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-purple-500 block uppercase mb-1">أرباح الشركة (30%)</span>
+                        <h3 id="stat-company" class="text-xl font-bold text-purple-700">0.00 دج</h3>
+                    </div>
+                </div>
+                <div class="bg-emerald-50/50 rounded-xl border border-emerald-100 p-4 flex flex-col justify-between ring-1 ring-emerald-500/20">
+                    <div>
+                        <span class="text-xs font-bold text-emerald-600 block uppercase mb-1">أرباحك أنت (70%)</span>
+                        <h3 id="stat-my-profit" class="text-xl font-bold text-emerald-700">0.00 دج</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border border-gray-100 rounded-xl overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                    <h3 class="font-bold text-gray-700 text-sm">📋 العمليات المؤرشفة خلال الفترة المحددة</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse">
+                        <thead>
+                            <tr class="bg-white text-gray-500 text-xs font-bold uppercase tracking-wider border-b border-gray-100">
+                                <th class="px-4 py-3">التاريخ</th>
+                                <th class="px-4 py-3">الزبون</th>
+                                <th class="px-4 py-3">المستلم</th>
+                                <th class="px-4 py-3">رأس المال</th>
+                                <th class="px-4 py-3">الشركة (30%)</th>
+                                <th class="px-4 py-3">أرباحك (70%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="analytics-table-body" class="divide-y divide-gray-50 text-sm text-gray-700"></tbody>
+                    </table>
+                </div>
+                <div id="no-data-msg" class="hidden text-center py-6 text-gray-400 text-sm">📭 لا توجد أي بيانات مؤرشفة.</div>
+            </div>
+        </div>
 
         <!-- أزرار الإجراءات السريعة -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -52,26 +131,6 @@
                 class="bg-amber-500 hover:bg-amber-600 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center transition">
                 💰 تسجيل دفعة جديدة
             </button>
-        </div>
-
-        <!-- المساعد الصوتي -->
-        <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl shadow-md p-6 text-white">
-            <h3 class="text-lg font-bold mb-2 flex items-center gap-2">
-                <span>🤖 المساعد الصوتي الذكي (خاص بالأدمن)</span>
-            </h3>
-            <p class="text-xs text-indigo-200 mb-4">اضغط على المايك وتكلم بالدارجة الجزائرية لتسجيل الدفعات تلقائياً
-                (مثال: "سجل منير عطاني عشرين آلاف")</p>
-            <div class="flex items-center gap-4">
-                <button id="voice-btn" onclick="startVoiceRecognition()"
-                    class="bg-white text-indigo-700 hover:bg-indigo-50 p-4 rounded-full shadow-lg transition duration-200 cursor-pointer flex items-center justify-center">
-                    <span id="mic-icon" class="text-xl">🎙️</span>
-                </button>
-                <div class="flex-1">
-                    <p id="voice-status" class="text-sm font-semibold text-indigo-100">جاهز للاستماع...</p>
-                    <p id="voice-result-text"
-                        class="text-xs text-indigo-200 italic mt-1 bg-indigo-900/30 p-2 rounded-lg hidden"></p>
-                </div>
-            </div>
         </div>
 
         <!-- جدول الزبائن -->
@@ -99,7 +158,25 @@
         </div>
 
     </main>
-
+    <!-- المساعد الصوتي -->
+        <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl shadow-md p-6 text-white">
+            <h3 class="text-lg font-bold mb-2 flex items-center gap-2">
+                <span>🤖 المساعد الصوتي الذكي (خاص بالأدمن)</span>
+            </h3>
+            <p class="text-xs text-indigo-200 mb-4">اضغط على المايك وتكلم بالدارجة الجزائرية لتسجيل الدفعات تلقائياً
+                (مثال: "سجل منير عطاني عشرين آلاف")</p>
+            <div class="flex items-center gap-4">
+                <button id="voice-btn" onclick="startVoiceRecognition()"
+                    class="bg-white text-indigo-700 hover:bg-indigo-50 p-4 rounded-full shadow-lg transition duration-200 cursor-pointer flex items-center justify-center">
+                    <span id="mic-icon" class="text-xl">🎙️</span>
+                </button>
+                <div class="flex-1">
+                    <p id="voice-status" class="text-sm font-semibold text-indigo-100">جاهز للاستماع...</p>
+                    <p id="voice-result-text"
+                        class="text-xs text-indigo-200 italic mt-1 bg-indigo-900/30 p-2 rounded-lg hidden"></p>
+                </div>
+            </div>
+        </div>
     <!-- ===== نافذة إضافة زبون جديد ===== -->
     <div id="client-modal" class="hidden fixed inset-0 bg-gray-900/50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
@@ -288,7 +365,32 @@
 
 
 
+    <!-- ===== القائمة الجانبية ===== -->
+    <div id="side-menu-overlay" onclick="closeMenu()" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden z-40 transition-opacity"></div>
+    <div id="side-menu" class="fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 flex flex-col">
+        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-indigo-50">
+            <h2 class="font-bold text-indigo-800 text-lg">القائمة</h2>
+            <button onclick="closeMenu()" class="text-gray-500 hover:text-red-500 text-2xl font-bold cursor-pointer">&times;</button>
+        </div>
+        <div class="p-4 flex flex-col gap-3">
+            <a href="calculator.html" class="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">🧮 الحاسبة السريعة</a>
+        </div>
+        <div class="mt-auto p-4 border-t border-gray-100">
+            <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">🚪 تسجيل الخروج</button>
+        </div>
+    </div>
 
+    <script>
+        function openMenu() {
+            document.getElementById('side-menu-overlay').classList.remove('hidden');
+            document.getElementById('side-menu').classList.remove('-translate-x-full');
+        }
+        function closeMenu() {
+            document.getElementById('side-menu-overlay').classList.add('hidden');
+            document.getElementById('side-menu').classList.add('-translate-x-full');
+        }
+    </script>
+    <script src="js/analytics.js"></script>
     <script src="js/admin.js"></script>
 </body>
 

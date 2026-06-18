@@ -1,7 +1,7 @@
 // ملف الإعدادات المركزية (Central Configuration)
 // يحتوي على جميع الثوابت المالية لتسهيل تعديلها في المستقبل من مكان واحد
 
-const FINANCIAL_CONFIG = {
+window.FINANCIAL_CONFIG = window.FINANCIAL_CONFIG || {
     // فائدة الوكالة لمصاريف فيسبوك (مثال: 1.2 تعني زيادة 20%)
     fbFeeMultiplier: 1.2,
 
