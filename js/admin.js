@@ -28,6 +28,33 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
+//  Toast + Sound Notification
+// ==========================================
+function showToast(message) {
+    // الصوت
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(880, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(1100, ctx.currentTime + 0.1);
+        g.gain.setValueAtTime(0.25, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        o.start(ctx.currentTime);
+        o.stop(ctx.currentTime + 0.4);
+    } catch(e) {}
+
+    // الإشعار
+    const toast = document.getElementById('toast-notification');
+    document.getElementById('toast-msg-body').innerText = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 4000);
+}
+
+// ==========================================
 //  جلب الرصيد العام من قوقل شيت وعرضه في الهيدر
 // ==========================================
 async function fetchHeaderBalance() {

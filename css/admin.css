@@ -7,3 +7,48 @@ body {
 .hidden {
     display: none !important;
 }
+/* ===== Toast Notification ===== */
+#toast-notification {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #fff;
+    border: 1px solid #d1fae5;
+    border-right: 4px solid #10b981;
+    border-radius: 1rem;
+    padding: 0.85rem 1.25rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    min-width: 280px;
+    max-width: 360px;
+    transform: translateX(110%);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    font-family: 'Cairo', sans-serif;
+    direction: rtl;
+}
+
+#toast-notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+#toast-notification .toast-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+#toast-notification .toast-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #065f46;
+}
+
+#toast-notification .toast-msg {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 1px;
+}
