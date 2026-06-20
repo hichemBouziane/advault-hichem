@@ -116,8 +116,8 @@ async function loadClientData(client) {
     updateBalanceCard(finalDebtDzd, client.exchange_rate || 240);
 
     // تحديث البطاقات الإحصائية
-    document.getElementById('client-total-ads').innerText = `${totalSpendWithProfit.toFixed(2)} €`;
-    document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} €`;
+    document.getElementById('client-total-ads').innerText = `${totalSpendWithProfit.toFixed(2)} $`;
+    document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} $`;
 
     // تحديث جدول المدفوعات
     const tbody = document.getElementById('client-payments-table');
@@ -132,7 +132,7 @@ async function loadClientData(client) {
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 transition">
                 <td class="p-3 text-gray-500 text-xs">${p.date}</td>
-                <td class="p-3 text-emerald-600 font-bold">${parseFloat(p.amount_euro).toFixed(2)} €</td>
+                <td class="p-3 text-emerald-600 font-bold">${parseFloat(p.amount_euro).toFixed(2)} $</td>
                 <td class="p-3 font-bold text-gray-700">${parseFloat(p.amount_dzd).toLocaleString('fr-FR')} دج</td>
                 <td class="p-3 text-gray-400 text-xs">${p.note || '-'}</td>
             </tr>`;

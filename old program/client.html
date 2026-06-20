@@ -29,11 +29,11 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-sm font-medium">إجمالي مصاريف الإعلانات</p>
-                <p class="text-2xl font-bold text-indigo-600 mt-2" id="client-total-ads">0.00 €</p>
+                <p class="text-2xl font-bold text-indigo-600 mt-2" id="client-total-ads">0.00 $</p>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-sm font-medium">إجمالي المدفوعات المستلمة</p>
-                <p class="text-2xl font-bold text-emerald-600 mt-2" id="client-total-paid">0.00 €</p>
+                <p class="text-2xl font-bold text-emerald-600 mt-2" id="client-total-paid">0.00 $</p>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-sm font-medium">المبلغ المستحق الإجمالي بالدينار</p>
@@ -48,7 +48,7 @@
                     <thead class="bg-gray-50 text-gray-500 border-b border-gray-100">
                         <tr>
                             <th class="p-3">التاريخ</th>
-                            <th class="p-3">المبلغ باليورو</th>
+                            <th class="p-3">المبلغ بالدولار</th>
                             <th class="p-3">المبلغ بالدينار</th>
                             <th class="p-3">ملاحظة</th>
                         </tr>
@@ -136,8 +136,8 @@
             let finalDebtDzd = Math.round(remainingEuro * (client.exchange_rate || 240));
 
             // تحديث البطاقات
-            document.getElementById('client-total-ads').innerText = `${totalSpendWithProfit.toFixed(2)} €`;
-            document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} €`;
+            document.getElementById('client-total-ads').innerText = `${totalSpendWithProfit.toFixed(2)} $`;
+            document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} $`;
             document.getElementById('client-balance').innerText = `${finalDebtDzd.toLocaleString('fr-FR', {maximumFractionDigits: 0})} دج`;
 
             // تحديث جدول المدفوعات
@@ -151,7 +151,7 @@
                 tbody.innerHTML += `
                     <tr>
                         <td class="p-3">${p.date}</td>
-                        <td class="p-3 text-emerald-600 font-medium">${parseFloat(p.amount_euro).toFixed(2)} €</td>
+                        <td class="p-3 text-emerald-600 font-medium">${parseFloat(p.amount_euro).toFixed(2)} $</td>
                         <td class="p-3">${parseFloat(p.amount_dzd).toLocaleString('fr-FR')} دج</td>
                         <td class="p-3 text-gray-500">${p.note || '-'}</td>
                     </tr>`;

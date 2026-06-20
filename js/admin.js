@@ -94,7 +94,7 @@ async function fetchHeaderBalance() {
         // 3. تحديث عنصر الهيدر الرئيسي (إذا كنت ما زلت تستخدمه)
         const balanceEl = document.getElementById('header-balance');
         if (balanceEl) {
-            balanceEl.innerText = isNaN(parsedValue) ? a1Value : `${parsedValue.toLocaleString('fr-FR')} €`;
+            balanceEl.innerText = isNaN(parsedValue) ? a1Value : `${parsedValue.toLocaleString('fr-FR')} $`;
         }
 
     } catch (e) {
@@ -244,8 +244,8 @@ async function loadAdminData() {
                     </button>
                 </td>
                 <td class="p-3 text-indigo-600 font-semibold">${client.campaign_keyword || '-'}</td>
-                <td class="p-3 font-semibold">€ ${facebookSpendWithProfit.toFixed(2)}</td>
-                <td class="p-3 text-emerald-600">${totalPaidEuro.toFixed(2)} €</td>
+                <td class="p-3 font-semibold">$ ${facebookSpendWithProfit.toFixed(2)}</td>
+                <td class="p-3 text-emerald-600">${totalPaidEuro.toFixed(2)} $</td>
                 <td class="p-3 text-gray-500">${client.exchange_rate} دج</td>
                 <td class="p-3 font-bold ${finalDebtDzd > 0 ? 'text-red-500' : 'text-gray-700'}">${finalDebtDzd.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} دج</td>
             </tr>`;
@@ -437,7 +437,7 @@ async function openClientPayments(clientId, clientName) {
             <tr class="hover:bg-gray-50">
                 <td class="p-3 text-gray-500">${p.date}</td>
                 <td class="p-3 font-bold">${parseFloat(p.amount_dzd).toLocaleString('fr-FR')} دج</td>
-                <td class="p-3 text-emerald-600 font-medium">${parseFloat(p.amount_euro).toFixed(2)} €</td>
+                <td class="p-3 text-emerald-600 font-medium">${parseFloat(p.amount_euro).toFixed(2)} $</td>
                 <td class="p-3 text-gray-500">${p.note || '-'}</td>
                 <td class="p-3">
                     <div class="flex gap-2 justify-center">
@@ -683,7 +683,7 @@ async function handleAiQuery(client, data) {
         if (lastCamp && lastCamp.insights?.data?.[0]) {
             let spendEuro = parseFloat(lastCamp.insights.data[0].spend || 0);
             let spendDzd = Math.round(spendEuro * (client.exchange_rate || 240));
-            speakAndStatus(`تكلفة الإعلان الأخير للزبون ${client.name} المسمى ${lastCamp.name} بلغت ${spendEuro.toFixed(2)} يورو، أي ما يعادل ${spendDzd.toLocaleString('fr-FR')} دينار جزائري.`);
+            speakAndStatus(`تكلفة الإعلان الأخير للزبون ${client.name} المسمى ${lastCamp.name} بلغت ${spendEuro.toFixed(2)} دولار، أي ما يعادل ${spendDzd.toLocaleString('fr-FR')} دينار جزائري.`);
         } else {
             speakAndStatus(`لم أجد أي حملات إعلانية نشطة أو حديثة حالياً للزبون ${client.name} على فيسبوك.`);
         }

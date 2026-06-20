@@ -87,8 +87,8 @@ async function loadClientData(client) {
     let finalDebtDzd = Math.round(remainingEuro * (client.exchange_rate || 240));
 
     // تحديث البطاقات
-    document.getElementById('client-total-ads').innerText = `${totalSpendWithProfit.toFixed(2)} €`;
-    document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} €`;
+    document.getElementById('client-total-ads').innerText = `${totalSpendWithProfit.toFixed(2)} $`;
+    document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} $`;
     document.getElementById('client-balance').innerText = `${finalDebtDzd.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} دج`;
 
     // تحديث جدول المدفوعات
@@ -104,7 +104,7 @@ async function loadClientData(client) {
         tbody.innerHTML += `
             <tr>
                 <td class="p-3">${p.date}</td>
-                <td class="p-3 text-emerald-600 font-medium">${parseFloat(p.amount_euro).toFixed(2)} €</td>
+                <td class="p-3 text-emerald-600 font-medium">${parseFloat(p.amount_euro).toFixed(2)} $</td>
                 <td class="p-3">${parseFloat(p.amount_dzd).toLocaleString('fr-FR')} دج</td>
                 <td class="p-3 text-gray-500">${p.note || '-'}</td>
             </tr>`;
