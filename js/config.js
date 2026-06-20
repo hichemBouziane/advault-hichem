@@ -14,3 +14,5 @@ window.FINANCIAL_CONFIG = window.FINANCIAL_CONFIG || {
     // حصتك الشخصية من صافي الأرباح (مثال: 0.70 تعني 70%)
     myShare: 0.70
 };
+
+window.GEMINI_API_KEY = window.GEMINI_API_KEY || "AQ.Ab8RN6KeOoitkHChvbjn6l25tyPeGwMxjuhRPlg-Bz789QLDFg";

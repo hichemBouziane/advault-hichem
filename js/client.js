@@ -7,6 +7,43 @@ const REDOTPAY_ID = "1999499801";
 
 // ===== حد الرصيد المنخفض (بالدينار) =====
 const LOW_BALANCE_THRESHOLD = 10000;
+
+// التحقق من تسجيل الدخول فوراً عند فتح السكريبت
+const user = JSON.parse(localStorage.getItem('currentUser'));
+if (!user || user.role !== 'client') {
+    window.location.href = 'index.html';
+}
+
+// تشغيل النظام بالكامل بأمان بعد تحميل المتصفح وعناصر الـ HTML
+document.addEventListener('DOMContentLoaded', () => {
+    if (user && user.name) {
+        document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
+        loadClientData(user);
+    }
+});
+
+// ==========================================
+// 🚀 نظام التتبع التلقائي لزيارات ونشاط العميل
+// ==========================================
+async function logClientVisit(client) {
+    if (!client || !client.id) return;
+    try {
+        const { error } = await _supabase
+            .from('user_logs')
+            .insert([
+                { 
+                    user_id: client.id, 
+                    user_name: client.name || 'تاجر جملة',
+                    action: 'زيارة لوحة التحكم',
+                    page_url: window.location.href
+                }
+            ]);
+        if (error) console.error("❌ خطأ أثناء تسجيل نشاط العميل:", error.message);
+    } catch (e) {
+        console.error("❌ حدث خطأ غير متوقع في نظام التتبع:", e);
+    }
+}
+
 // ==========================================
 //  جلب الحملات من Supabase مباشرة
 // ==========================================
@@ -20,13 +57,6 @@ async function getCampaignsFromSupabase() {
         insights: { data: [{ spend: row.facebook_spend_euro }] }
     }));
 }
-
-// التحقق من تسجيل الدخول
-const user = JSON.parse(localStorage.getItem('currentUser'));
-if (!user || user.role !== 'client') {
-    window.location.href = 'index.html';
-}
-document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
 
 // ==========================================
 //  تحديث بطاقة الرصيد حسب الحالة
@@ -84,6 +114,9 @@ function updateBalanceCard(finalDebtDzd, exchangeRate) {
 //  تحميل بيانات الزبون الكاملة
 // ==========================================
 async function loadClientData(client) {
+    // 🔁 استدعاء دالة التتبع فور البدء في معالجة بيانات العميل
+    await logClientVisit(client);
+
     const metaCampaigns = await getCampaignsFromSupabase();
 
     // حساب المصاريف حسب الكلمة المفتاحية
@@ -150,12 +183,14 @@ function closePayModal() {
     document.getElementById('pay-modal').classList.add('hidden');
 }
 
-function copyRedotpayId() {
+// إصلاح مرجع زر النسخ بتمرير الـ event بشكل صحيح
+function copyRedotpayId(event) {
     const id = document.getElementById('redotpay-id').innerText;
     navigator.clipboard.writeText(id).then(() => {
-        const btn = event.target;
+        const btn = event ? event.target : document.querySelector('[onclick^="copyRedotpayId"]');
+        const originalText = btn.innerText;
         btn.innerText = '✅ تم النسخ!';
-        setTimeout(() => { btn.innerText = '📋 نسخ الـ ID'; }, 2000);
+        setTimeout(() => { btn.innerText = originalText; }, 2000);
     });
 }
 
@@ -166,6 +201,3 @@ function handleLogout() {
     localStorage.clear();
     window.location.href = 'index.html';
 }
-
-// تشغيل عند فتح الصفحة
-loadClientData(user);
