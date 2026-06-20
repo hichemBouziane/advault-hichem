@@ -232,16 +232,21 @@
             <form id="manual-payment-form" onsubmit="submitManualPayment(event)" class="p-6 space-y-4">
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">اختر الزبون:</label>
-                    <select id="pop-client-select" required onchange="updateEuroFromDzd()"
+                    <select id="pop-client-select" required onchange="handleClientSelection()"
                         class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
                         <option value="">-- جاري تحميل قائمة الزبائن... --</option>
                     </select>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (دج):</label>
                         <input type="number" id="pop-amount-dzd" oninput="updateEuroFromDzd()" placeholder="0" required
                             class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-1">سعر الصرف:</label>
+                        <input type="number" id="pop-exchange-rate" oninput="updateEuroFromDzd()" placeholder="240" required
+                            class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center bg-gray-50">
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (يورو €):</label>
@@ -308,7 +313,7 @@
             <div class="bg-amber-500 p-4 text-white text-center font-bold text-lg">
                 ✏️ تعديل الدفعة
             </div>
-            <div class="p-6 space-y-4">
+            <form onsubmit="saveEditedPayment(event)" class="p-6 space-y-4">
                 <input type="hidden" id="edit-payment-id">
                 <div>
                     <label class="block text-gray-700 text-sm font-bold mb-1">المبلغ (دج):</label>
@@ -331,7 +336,7 @@
                         class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
                 <div class="flex gap-3 pt-2">
-                    <button onclick="saveEditedPayment()"
+                    <button type="submit"
                         class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
                         ✅ حفظ التعديلات
                     </button>
@@ -340,7 +345,7 @@
                         إلغاء
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 

@@ -300,6 +300,7 @@ window.openPaymentModal = async function () {
     document.getElementById('pop-payment-note').value = "Versement";
     document.getElementById('pop-amount-dzd').value = "";
     document.getElementById('pop-amount-euro').value = "";
+    document.getElementById('pop-exchange-rate').value = "";
     select.innerHTML = '<option value="">-- جاري تحميل الزبائن... --</option>';
     try {
         const { data: clients, error } = await _supabase.from('clients').select('id, name, exchange_rate').order('name', { ascending: true });
@@ -319,11 +320,20 @@ window.openPaymentModal = async function () {
     }
 };
 
-function updateEuroFromDzd() {
+// دالة جلب سعر الصرف عند تغيير الزبون
+window.handleClientSelection = function() {
     const selectEl = document.getElementById('pop-client-select');
     const selectedOption = selectEl.options[selectEl.selectedIndex];
     if (!selectedOption || !selectEl.value) return;
     const rate = parseFloat(selectedOption.getAttribute('data-rate')) || 240;
+    document.getElementById('pop-exchange-rate').value = rate;
+    updateEuroFromDzd(); // تحديث الحساب تلقائياً
+}
+
+// تحديث المبالغ بناء على السعر القابل للتعديل
+window.updateEuroFromDzd = function() {
+    const rateInput = document.getElementById('pop-exchange-rate').value;
+    const rate = parseFloat(rateInput) || 240;
     const amountDzd = parseFloat(document.getElementById('pop-amount-dzd').value) || 0;
     if (amountDzd > 0) {
         document.getElementById('pop-amount-euro').value = (amountDzd / rate).toFixed(2);
@@ -345,6 +355,7 @@ async function submitManualPayment(event) {
     const clientName = selectedOption.getAttribute('data-name');
     const amountDzd = parseFloat(document.getElementById('pop-amount-dzd').value);
     const amountEuro = parseFloat(document.getElementById('pop-amount-euro').value);
+    const currentExchangeRate = parseFloat(document.getElementById('pop-exchange-rate').value) || 240;
     const paymentDate = document.getElementById('pop-payment-date').value;
     let paymentNote = document.getElementById('pop-payment-note').value.trim();
     if (!paymentNote) paymentNote = "Versement";
@@ -358,6 +369,13 @@ async function submitManualPayment(event) {
             .insert([{ client_id: clientId, amount_dzd: amountDzd, amount_euro: amountEuro, note: paymentNote, date: paymentDate }])
             .select().single();
         if (payErr) throw payErr;
+
+        // تحديث سعر الصرف الخاص بالزبون لكي يحفظ للدفعة القادمة
+        const oldRate = parseFloat(selectedOption.getAttribute('data-rate')) || 240;
+        if (currentExchangeRate !== oldRate) {
+            await _supabase.from('clients').update({ exchange_rate: currentExchangeRate }).eq('id', clientId);
+        }
+
         const adCapital = parseFloat((amountDzd * 0.8).toFixed(2));
         const totalProfit = parseFloat((amountDzd - adCapital).toFixed(2));
         const companyProfit = parseFloat((totalProfit * 0.30).toFixed(2));
@@ -369,7 +387,7 @@ async function submitManualPayment(event) {
             my_profit: myProfit, created_at: timestampWithTime
         }]);
         if (arcErr) throw arcErr;
-        alert(`✅ تم تسجيل مبلغ ${amountDzd.toLocaleString('fr-FR')} دج (${amountEuro} €) بنجاح تحت ملاحظة: "${paymentNote}".`);
+        showSuccessNotification(`تم الحفظ: ${amountDzd.toLocaleString('fr-FR')} دج`);
         closePaymentModal();
         if (typeof loadAdminData === 'function') loadAdminData();
         if (typeof loadAnalyticsData === 'function') loadAnalyticsData();
@@ -377,6 +395,25 @@ async function submitManualPayment(event) {
         console.error("خطأ أثناء معالجة وحفظ الدفعة:", err);
         alert(`❌ فشل الاتصال بقاعدة البيانات: ${err.message}`);
     }
+}
+
+// إشعار الحفظ الجانبي مع الرنة (بدل نافذة Alert المزعجة)
+function showSuccessNotification(message) {
+    // تشغيل الرنة
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audio.play().catch(() => {}); // نتجاهل الخطأ إذا منع المتصفح الصوت
+
+    let toast = document.getElementById('success-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'success-toast';
+        toast.className = 'fixed top-5 right-5 bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-2xl z-[100] transform transition-all duration-300 translate-x-full opacity-0 flex items-center gap-2 font-bold';
+        toast.innerHTML = `<span>✅</span> <span id="toast-message"></span>`;
+        document.body.appendChild(toast);
+    }
+    document.getElementById('toast-message').innerText = message;
+    setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); }, 10);
+    setTimeout(() => { toast.classList.add('translate-x-full', 'opacity-0'); }, 3000);
 }
 
 // ==========================================
@@ -427,30 +464,63 @@ function openEditPayment(id, dzd, euro, date, note) {
     document.getElementById('edit-payment-modal').classList.remove('hidden');
 }
 
-async function saveEditedPayment() {
-    const id = document.getElementById('edit-payment-id').value;
+async function saveEditedPayment(event) {
+    event.preventDefault();
+    const paymentId = document.getElementById('edit-payment-id').value;
     const amountDzd = parseFloat(document.getElementById('edit-amount-dzd').value);
     const amountEuro = parseFloat(document.getElementById('edit-amount-euro').value);
     const date = document.getElementById('edit-payment-date').value;
     const note = document.getElementById('edit-payment-note').value.trim() || 'Versement';
+
     if (!amountDzd || !amountEuro || !date) {
         alert("يرجى ملء جميع الحقول.");
         return;
     }
-    const { error } = await _supabase.from('payments').update({ amount_dzd: amountDzd, amount_euro: amountEuro, date, note }).eq('id', id);
-    if (error) { alert("❌ فشل التعديل: " + error.message); return; }
-    alert("✅ تم تعديل الدفعة بنجاح!");
-    document.getElementById('edit-payment-modal').classList.add('hidden');
-    loadAdminData();
+
+    try {
+        // 1. تحديث الدفعة في جدول payments
+        const { error: paymentError } = await _supabase.from('payments').update({ amount_dzd: amountDzd, amount_euro: amountEuro, date, note }).eq('id', paymentId);
+        if (paymentError) throw paymentError;
+
+        // 2. إعادة حساب الأرباح
+        const adCapital = parseFloat((amountDzd * 0.8).toFixed(2));
+        const totalProfit = parseFloat((amountDzd - adCapital).toFixed(2));
+        const companyProfit = parseFloat((totalProfit * 0.30).toFixed(2));
+        const myProfit = parseFloat((totalProfit * 0.70).toFixed(2));
+        const timestampWithTime = `${date}T12:00:00Z`;
+
+        // 3. تحديث السجل المرتبط في جدول الأرشيف
+        const { error: archiveError } = await _supabase.from('profits_archive')
+            .update({
+                amount_received: amountDzd,
+                ad_capital: adCapital,
+                total_profit: totalProfit,
+                company_profit: companyProfit,
+                my_profit: myProfit,
+                created_at: timestampWithTime
+            })
+            .eq('payment_id', paymentId);
+
+        if (archiveError) throw archiveError;
+
+        showSuccessNotification("✅ تم تعديل الدفعة والأرشيف بنجاح!");
+        document.getElementById('edit-payment-modal').classList.add('hidden');
+        loadAdminData();
+        if (typeof loadAnalyticsData === 'function') loadAnalyticsData();
+
+    } catch (error) {
+        alert(`❌ فشل التعديل: ${error.message}`);
+    }
 }
 
-async function deletePayment(paymentId, clientId, clientName) {
-    if (!confirm("⚠️ هل أنت متأكد من حذف هذه الدفعة؟ لا يمكن التراجع عن هذا الإجراء!")) return;
-    const { error } = await _supabase.from('payments').delete().eq('id', paymentId);
+async function deletePayment(paymentId) {
+    if (!confirm("⚠️ هل أنت متأكد من حذف هذه الدفعة؟ سيتم حذفها من الأرشيف أيضاً ولا يمكن التراجع عن هذا الإجراء!")) return;
+    const { error } = await _supabase.rpc('delete_payment_and_archive', { p_payment_id: paymentId });
     if (error) { alert("❌ فشل الحذف: " + error.message); return; }
-    alert("✅ تم حذف الدفعة بنجاح!");
-    openClientPayments(clientId, clientName);
+    showSuccessNotification("✅ تم حذف الدفعة والأرشيف المرتبط بها.");
+    closePaymentsModal(); // إغلاق نافذة الدفعات لأنها لم تعد دقيقة
     loadAdminData();
+    if (typeof loadAnalyticsData === 'function') loadAnalyticsData();
 }
 
 // ==========================================
