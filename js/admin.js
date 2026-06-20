@@ -540,14 +540,34 @@ async function saveEditedPayment(event) {
     }
 }
 
-async function deletePayment(paymentId) {
-    if (!confirm("⚠️ هل أنت متأكد من حذف هذه الدفعة؟ سيتم حذفها من الأرشيف أيضاً ولا يمكن التراجع عن هذا الإجراء!")) return;
-    const { error } = await _supabase.rpc('delete_payment_and_archive', { p_payment_id: paymentId });
-    if (error) { alert("❌ فشل الحذف: " + error.message); return; }
-    showSuccessNotification("✅ تم حذف الدفعة والأرشيف المرتبط بها.");
-    closePaymentsModal(); // إغلاق نافذة الدفعات لأنها لم تعد دقيقة
-    loadAdminData();
-    if (typeof loadAnalyticsData === 'function') loadAnalyticsData();
+async function deletePayment(paymentId, clientId, clientName) {
+    if (!confirm("⚠️ هل أنت متأكد من حذف هذه الدفعة؟ لا يمكن التراجع عن هذا الإجراء!")) return;
+
+    try {
+        // 1. حذف من جدول profits_archive أولاً (لأن فيه foreign key)
+        const { error: archiveErr } = await _supabase
+            .from('profits_archive')
+            .delete()
+            .eq('payment_id', paymentId);
+
+        if (archiveErr) throw archiveErr;
+
+        // 2. ثم حذف من جدول payments
+        const { error: payErr } = await _supabase
+            .from('payments')
+            .delete()
+            .eq('id', paymentId);
+
+        if (payErr) throw payErr;
+
+        showToast("تم حذف الدفعة بنجاح");
+        openClientPayments(clientId, clientName);
+        loadAdminData();
+
+    } catch (err) {
+        console.error("خطأ في الحذف:", err);
+        alert("❌ فشل الحذف: " + err.message);
+    }
 }
 
 // ==========================================
