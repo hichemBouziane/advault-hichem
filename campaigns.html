@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdVault — الحملات الإعلانية</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/admin.css">
+    <script>
+        (function () {
+            const _u = JSON.parse(localStorage.getItem('currentUser'));
+            if (!_u || _u.role !== 'admin') { window.location.href = 'index.html'; }
+        })();
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- الهيدر -->
+    <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+        <div>
+            <a href="admin.html" class="text-indigo-600 hover:text-indigo-800 text-sm font-bold flex items-center gap-1 mb-1">
+                ← رجوع للوحة التحكم
+            </a>
+            <h1 class="text-xl font-bold text-gray-800">📢 الحملات الإعلانية</h1>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-md font-semibold">تفاصيل حملات كل زبون</span>
+        </div>
+    </header>
+
+    <main class="p-6 flex-1 space-y-6">
+
+        <!-- اختيار الزبون -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <label class="block text-sm font-bold text-gray-600 mb-2">اختر الزبون:</label>
+            <select id="client-select" onchange="loadClientCampaigns()"
+                class="w-full md:w-80 bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                <option value="">-- اختر زبون --</option>
+            </select>
+        </div>
+
+        <!-- البطاقات الإحصائية -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" id="stats-section">
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <p class="text-xs font-bold text-gray-400 mb-1">💹 سعر الصرف</p>
+                <p class="text-lg font-bold text-gray-700" id="stat-rate">— دج</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <p class="text-xs font-bold text-blue-500 mb-1">📢 مصاريف الإعلانات</p>
+                <p class="text-lg font-bold text-blue-700" id="stat-ads">0.00 $</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <p class="text-xs font-bold text-indigo-500 mb-1">💰 المصاريف × 1.2</p>
+                <p class="text-lg font-bold text-indigo-700" id="stat-ads-profit">0.00 $</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <p class="text-xs font-bold text-emerald-500 mb-1">✅ إجمالي الدفعات</p>
+                <p class="text-lg font-bold text-emerald-700" id="stat-paid">0.00 $</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <p class="text-xs font-bold text-purple-500 mb-1">🏢 فائدة الشركة (30%)</p>
+                <p class="text-lg font-bold text-purple-700" id="stat-company">0 دج</p>
+            </div>
+
+            <div class="bg-emerald-50 rounded-2xl shadow-sm border border-emerald-100 p-4 ring-1 ring-emerald-400/20">
+                <p class="text-xs font-bold text-emerald-600 mb-1">⭐ فائدتي (70%)</p>
+                <p class="text-lg font-bold text-emerald-700" id="stat-my">0 دج</p>
+            </div>
+
+        </div>
+
+        <!-- بطاقة الرصيد المتبقي -->
+        <div id="balance-card-section" class="hidden">
+            <div id="balance-card-wrap" class="rounded-2xl p-5 text-white text-center shadow-md">
+                <p class="text-sm font-semibold text-white/80 mb-1">الرصيد الحالي للزبون</p>
+                <h2 id="stat-balance" class="text-3xl font-bold mb-1">0 دج</h2>
+                <p id="stat-balance-msg" class="text-sm font-medium text-white/90"></p>
+            </div>
+        </div>
+
+        <!-- جدول الحملات -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700 text-sm">📋 قائمة الحملات الإعلانية</h3>
+                <span id="campaigns-count" class="text-xs text-gray-400"></span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-right text-sm">
+                    <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                        <tr>
+                            <th class="p-3">اسم الحملة</th>
+                            <th class="p-3">المصاريف ($)</th>
+                            <th class="p-3">المصاريف × 1.2 ($)</th>
+                            <th class="p-3">آخر تحديث</th>
+                        </tr>
+                    </thead>
+                    <tbody id="campaigns-table" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="4" class="p-6 text-center text-gray-400">اختر زبوناً لعرض حملاته</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const SUPABASE_URL     = "https://uljdazwcjxogpymvbflq.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ===== تحميل قائمة الزبائن =====
+        async function loadClients() {
+            const { data: clients } = await _supabase
+                .from('clients')
+                .select('id, name, campaign_keyword, exchange_rate')
+                .eq('role', 'client')
+                .order('name', { ascending: true });
+
+            const select = document.getElementById('client-select');
+            (clients || []).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.setAttribute('data-keyword', c.campaign_keyword || '');
+                opt.setAttribute('data-rate', c.exchange_rate || 240);
+                opt.setAttribute('data-name', c.name);
+                opt.innerText = c.name;
+                select.appendChild(opt);
+            });
+        }
+
+        // ===== تحميل حملات الزبون المختار =====
+        async function loadClientCampaigns() {
+            const select  = document.getElementById('client-select');
+            const opt     = select.options[select.selectedIndex];
+            if (!select.value) return;
+
+            const clientId   = select.value;
+            const keyword    = opt.getAttribute('data-keyword');
+            const rate       = parseFloat(opt.getAttribute('data-rate')) || 240;
+            const clientName = opt.getAttribute('data-name');
+
+            const tbody = document.getElementById('campaigns-table');
+            tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">جاري التحميل...</td></tr>';
+
+            // 1. جلب الحملات من Supabase حسب الكلمة المفتاحية
+            const { data: allCampaigns } = await _supabase
+                .from('facebook_campaigns')
+                .select('campaign_name, facebook_spend_euro, updated_at');
+
+            const campaigns = (allCampaigns || []).filter(c =>
+                c.campaign_name.toLowerCase().includes((keyword || '').toLowerCase())
+            );
+
+            // 2. جلب الدفعات
+            const { data: payments } = await _supabase
+                .from('payments')
+                .select('amount_euro')
+                .eq('client_id', clientId);
+
+            const totalPaidUsd = (payments || []).reduce((s, p) => s + parseFloat(p.amount_euro || 0), 0);
+
+            // 3. حساب الإجماليات
+            const totalAds       = campaigns.reduce((s, c) => s + parseFloat(c.facebook_spend_euro || 0), 0);
+            const totalAdsProfit = totalAds * 1.2;
+            const remaining      = totalAdsProfit - totalPaidUsd;
+            const balanceDzd     = Math.round(remaining * rate);
+
+            // الأرباح من profits_archive
+            const { data: archive } = await _supabase
+                .from('profits_archive')
+                .select('company_profit, my_profit')
+                .eq('client_name', clientName);
+
+            let totalCompany = 0;
+            let totalMy      = 0;
+            (archive || []).forEach(r => {
+                totalCompany += parseFloat(r.company_profit || 0);
+                totalMy      += parseFloat(r.my_profit      || 0);
+            });
+
+            // 4. تحديث البطاقات
+            const fmt  = n => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const fmtD = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' دج';
+
+            document.getElementById('stat-rate').innerText         = rate + ' دج';
+            document.getElementById('stat-ads').innerText          = fmt(totalAds) + ' $';
+            document.getElementById('stat-ads-profit').innerText   = fmt(totalAdsProfit) + ' $';
+            document.getElementById('stat-paid').innerText         = fmt(totalPaidUsd) + ' $';
+            document.getElementById('stat-company').innerText      = fmtD(totalCompany);
+            document.getElementById('stat-my').innerText           = fmtD(totalMy);
+
+            // 5. بطاقة الرصيد
+            const balanceSection = document.getElementById('balance-card-section');
+            const balanceCard    = document.getElementById('balance-card-wrap');
+            const balanceEl      = document.getElementById('stat-balance');
+            const balanceMsg     = document.getElementById('stat-balance-msg');
+            balanceSection.classList.remove('hidden');
+
+            const absDzd = Math.abs(balanceDzd).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+            if (balanceDzd > 0) {
+                balanceCard.className = 'rounded-2xl p-5 text-white text-center shadow-md bg-gradient-to-r from-red-600 to-red-500';
+                balanceEl.innerText   = `- ${absDzd} دج`;
+                balanceMsg.innerText  = '⚠️ على الزبون تسوية المستحقات';
+            } else if (balanceDzd < 0 && Math.abs(balanceDzd) < 10000) {
+                balanceCard.className = 'rounded-2xl p-5 text-white text-center shadow-md bg-gradient-to-r from-amber-500 to-orange-400';
+                balanceEl.innerText   = `${absDzd} دج`;
+                balanceMsg.innerText  = '📉 رصيد الزبون منخفض';
+            } else {
+                balanceCard.className = 'rounded-2xl p-5 text-white text-center shadow-md bg-gradient-to-r from-emerald-600 to-emerald-500';
+                balanceEl.innerText   = `${absDzd} دج ✅`;
+                balanceMsg.innerText  = '✅ حساب الزبون نظيف';
+            }
+
+            // 6. ملء الجدول
+            document.getElementById('campaigns-count').innerText = `${campaigns.length} حملة`;
+            tbody.innerHTML = '';
+
+            if (campaigns.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-gray-400">لا توجد حملات مطابقة لهذا الزبون</td></tr>';
+                return;
+            }
+
+            campaigns.forEach(c => {
+                const spend       = parseFloat(c.facebook_spend_euro || 0);
+                const spendProfit = spend * 1.2;
+                const updatedAt   = c.updated_at
+                    ? new Date(c.updated_at).toLocaleDateString('ar-DZ', { year: 'numeric', month: 'short', day: 'numeric' })
+                    : '—';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="p-3 font-medium text-gray-800">${c.campaign_name}</td>
+                        <td class="p-3 text-blue-600 font-semibold">${fmt(spend)} $</td>
+                        <td class="p-3 text-indigo-600 font-bold">${fmt(spendProfit)} $</td>
+                        <td class="p-3 text-gray-400 text-xs">${updatedAt}</td>
+                    </tr>`;
+            });
+        }
+
+        // تشغيل عند فتح الصفحة
+        loadClients();
+    </script>
+</body>
+</html>

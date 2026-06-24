@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
     loadAdminData();
+    loadSummaryCards();
     fetchHeaderBalance(); // استدعاء دالة جلب الرصيد للهيدر
 });
 
@@ -281,6 +282,71 @@ async function loadAdminData() {
 
 
 
+
+// ==========================================
+//  تحميل البطاقات الإحصائية السريعة
+// ==========================================
+async function loadSummaryCards() {
+    // 1. جلب دفعات هذا الشهر من profits_archive
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const endOfMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+    const { data: monthRecords } = await _supabase
+        .from('profits_archive')
+        .select('amount_received, company_profit, my_profit')
+        .gte('created_at', startOfMonth)
+        .lte('created_at', endOfMonth);
+
+    let monthPayments  = 0;
+    let monthCompany   = 0;
+    let monthMyProfit  = 0;
+
+    (monthRecords || []).forEach(r => {
+        monthPayments += parseFloat(r.amount_received || 0);
+        monthCompany  += parseFloat(r.company_profit  || 0);
+        monthMyProfit += parseFloat(r.my_profit       || 0);
+    });
+
+    // 2. حساب الأرصدة الموجبة والسالبة من جدول الزبائن
+    const metaCampaigns = await getCampaignsFromSupabase() || [];
+    const { data: clients } = await _supabase
+        .from('clients')
+        .select('id, campaign_keyword, exchange_rate')
+        .eq('role', 'client');
+
+    let totalPositive = 0;
+    let totalNegative = 0;
+
+    const promises = (clients || []).map(async client => {
+        let spendEuro = 0;
+        metaCampaigns.forEach(camp => {
+            if (camp.name.toLowerCase().includes((client.campaign_keyword || '').toLowerCase())) {
+                spendEuro += parseFloat(camp.insights?.data?.[0]?.spend || 0);
+            }
+        });
+        const spendWithProfit = spendEuro * 1.2;
+        const { data: payments } = await _supabase
+            .from('payments')
+            .select('amount_euro')
+            .eq('client_id', client.id);
+        const totalPaid = (payments || []).reduce((s, p) => s + parseFloat(p.amount_euro || 0), 0);
+        const remaining = spendWithProfit - totalPaid;
+        const debtDzd   = Math.round(remaining * (client.exchange_rate || 240));
+        if (debtDzd > 0) totalNegative += debtDzd;
+        else              totalPositive += Math.abs(debtDzd);
+    });
+
+    await Promise.all(promises);
+
+    // 3. تحديث الواجهة
+    const fmt = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' دج';
+    document.getElementById('summary-month-payments').innerText = fmt(monthPayments);
+    document.getElementById('summary-positive').innerText       = fmt(totalPositive);
+    document.getElementById('summary-negative').innerText       = fmt(totalNegative);
+    document.getElementById('summary-company-month').innerText  = fmt(monthCompany);
+    document.getElementById('summary-my-month').innerText       = fmt(monthMyProfit);
+}
 
 // ==========================================
 //  إدارة نافذة إضافة زبون جديد
