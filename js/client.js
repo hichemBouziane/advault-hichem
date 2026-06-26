@@ -23,21 +23,60 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
+// 🌍 جلب الموقع الجغرافي الحقيقي للزائر
+// يجرب 3 APIs بالتسلسل — إذا فشل الأول ينتقل للتالي
+// ==========================================
+async function getVisitorLocation() {
+
+    // --- API 1: ip-api.com (بدون مفتاح، سريع، يدعم HTTP و HTTPS) ---
+    try {
+        const res  = await fetch('https://ip-api.com/json/?fields=status,city,country,countryCode', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.status === 'success' && data.city) {
+            return `${data.city}, ${data.countryCode}`;
+        }
+    } catch (_) {}
+
+    // --- API 2: ipwho.is ---
+    try {
+        const res  = await fetch('https://ipwho.is/', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.success && data.city) {
+            return `${data.city}, ${data.country_code}`;
+        }
+    } catch (_) {}
+
+    // --- API 3: ipapi.co ---
+    try {
+        const res  = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+        const data = await res.json();
+        if (data.city && data.country) {
+            return `${data.city}, ${data.country}`;
+        }
+    } catch (_) {}
+
+    return 'غير محدد';
+}
+
+// ==========================================
 // 🚀 نظام التتبع التلقائي لزيارات ونشاط العميل
 // ==========================================
 async function logClientVisit(client) {
     if (!client || !client.id) return;
     try {
+        // جلب الموقع أولاً ثم تسجيل الزيارة مع الموقع دفعة واحدة
+        const location = await getVisitorLocation();
+
         const { error } = await _supabase
             .from('user_logs')
-            .insert([
-                { 
-                    user_id: client.id, 
-                    user_name: client.name || 'تاجر جملة',
-                    action: 'زيارة لوحة التحكم',
-                    page_url: window.location.href
-                }
-            ]);
+            .insert([{
+                user_id:   client.id,
+                user_name: client.name || 'تاجر جملة',
+                action:    'زيارة لوحة التحكم',
+                page_url:  window.location.href,
+                location:  location
+            }]);
+
         if (error) console.error("❌ خطأ أثناء تسجيل نشاط العميل:", error.message);
     } catch (e) {
         console.error("❌ حدث خطأ غير متوقع في نظام التتبع:", e);
@@ -62,46 +101,40 @@ async function getCampaignsFromSupabase() {
 //  تحديث بطاقة الرصيد حسب الحالة
 // ==========================================
 function updateBalanceCard(finalDebtDzd, exchangeRate) {
-    const card = document.getElementById('balance-card');
-    const amountEl = document.getElementById('balance-amount');
+    const card      = document.getElementById('balance-card');
+    const amountEl  = document.getElementById('balance-amount');
     const messageEl = document.getElementById('balance-message');
-    const payBtn = document.getElementById('pay-btn');
+    const payBtn    = document.getElementById('pay-btn');
 
-    // تنسيق الرقم
     const formatted = Math.abs(finalDebtDzd).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
 
-    // حالة 1: رصيد سالب (مديون)
     if (finalDebtDzd > 0) {
-        card.className = 'balance-card-red mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
-        amountEl.innerText = `- ${formatted} دج`;
+        card.className      = 'balance-card-red mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
+        amountEl.innerText  = `- ${formatted} دج`;
         messageEl.innerHTML = '⚠️ لديك مستحقات متأخرة، يرجى التسوية';
         payBtn.classList.remove('hidden');
-        payBtn.className = 'bg-white text-red-600 font-bold px-6 py-2.5 rounded-2xl text-sm shadow-lg hover:bg-red-50 transition cursor-pointer';
+        payBtn.className    = 'bg-white text-red-600 font-bold px-6 py-2.5 rounded-2xl text-sm shadow-lg hover:bg-red-50 transition cursor-pointer';
 
-        // حالة 2: رصيد منخفض أو صفر قريباً
     } else if (finalDebtDzd < 0 && Math.abs(finalDebtDzd) < LOW_BALANCE_THRESHOLD) {
-        card.className = 'balance-card-orange mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
-        amountEl.innerText = `${formatted} دج`;
+        card.className      = 'balance-card-orange mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
+        amountEl.innerText  = `${formatted} دج`;
         messageEl.innerHTML = '📉 رصيدك المتبقي منخفض، جدده قريباً';
         payBtn.classList.add('hidden');
 
-        // حالة 3: حساب نظيف / رصيد مريح
     } else {
-        card.className = 'balance-card-purple mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
-        amountEl.innerText = finalDebtDzd === 0 ? '0 دج ✅' : `${formatted} دج ✅`;
+        card.className      = 'balance-card-purple mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500';
+        amountEl.innerText  = finalDebtDzd === 0 ? '0 دج ✅' : `${formatted} دج ✅`;
         messageEl.innerHTML = '✅ حسابك نظيف، شكراً لك!';
         payBtn.classList.add('hidden');
     }
 
-    // إضافة نقاط الخلفية إذا اختفت
     if (!card.querySelector('.dots-pattern')) {
         const dots = document.createElement('div');
         dots.className = 'dots-pattern';
         card.prepend(dots);
     }
 
-    // تحديث نافذة الدفع
-    const absDzd = Math.abs(finalDebtDzd);
+    const absDzd    = Math.abs(finalDebtDzd);
     const usdAmount = (absDzd / (exchangeRate || 240)).toFixed(2);
     document.getElementById('modal-balance').innerHTML = `
         <span class="text-2xl font-bold text-red-600">${absDzd.toLocaleString('fr-FR')} دج</span>
@@ -114,12 +147,10 @@ function updateBalanceCard(finalDebtDzd, exchangeRate) {
 //  تحميل بيانات الزبون الكاملة
 // ==========================================
 async function loadClientData(client) {
-    // 🔁 استدعاء دالة التتبع فور البدء في معالجة بيانات العميل
     await logClientVisit(client);
 
     const metaCampaigns = await getCampaignsFromSupabase();
 
-    // حساب المصاريف حسب الكلمة المفتاحية
     let totalSpendEuro = 0;
     metaCampaigns.forEach(camp => {
         if (camp.name.toLowerCase().includes(client.campaign_keyword.toLowerCase())) {
@@ -129,30 +160,23 @@ async function loadClientData(client) {
         }
     });
 
-    // فائدة الوكالة 20%
     const totalSpendWithProfit = totalSpendEuro * 1.2;
 
-    // جلب المدفوعات من Supabase
     let { data: payments } = await _supabase
         .from('payments')
         .select('*')
         .eq('client_id', client.id)
         .order('date', { ascending: false });
 
-    let totalPaidEuro = payments?.reduce((sum, item) => sum + parseFloat(item.amount_euro || 0), 0) || 0;
+    let totalPaidEuro  = payments?.reduce((sum, item) => sum + parseFloat(item.amount_euro || 0), 0) || 0;
+    let remainingEuro  = totalSpendWithProfit - totalPaidEuro;
+    let finalDebtDzd   = Math.round(remainingEuro * (client.exchange_rate || 240));
 
-    // حساب الرصيد بالدينار
-    let remainingEuro = totalSpendWithProfit - totalPaidEuro;
-    let finalDebtDzd = Math.round(remainingEuro * (client.exchange_rate || 240));
-
-    // تحديث بطاقة الرصيد
     updateBalanceCard(finalDebtDzd, client.exchange_rate || 240);
 
-    // تحديث البطاقات الإحصائية
-    document.getElementById('client-total-ads').innerText = `${totalSpendWithProfit.toFixed(2)} $`;
+    document.getElementById('client-total-ads').innerText  = `${totalSpendWithProfit.toFixed(2)} $`;
     document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} $`;
 
-    // تحديث جدول المدفوعات
     const tbody = document.getElementById('client-payments-table');
     tbody.innerHTML = '';
 
@@ -183,13 +207,12 @@ function closePayModal() {
     document.getElementById('pay-modal').classList.add('hidden');
 }
 
-// إصلاح مرجع زر النسخ بتمرير الـ event بشكل صحيح
 function copyRedotpayId(event) {
     const id = document.getElementById('redotpay-id').innerText;
     navigator.clipboard.writeText(id).then(() => {
-        const btn = event ? event.target : document.querySelector('[onclick^="copyRedotpayId"]');
+        const btn          = event ? event.target : document.querySelector('[onclick^="copyRedotpayId"]');
         const originalText = btn.innerText;
-        btn.innerText = '✅ تم النسخ!';
+        btn.innerText      = '✅ تم النسخ!';
         setTimeout(() => { btn.innerText = originalText; }, 2000);
     });
 }
