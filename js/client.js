@@ -177,6 +177,45 @@ async function loadClientData(client) {
     document.getElementById('client-total-ads').innerText  = `${totalSpendWithProfit.toFixed(2)} $`;
     document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} $`;
 
+    // تصفية وعرض تفاصيل الحملات النشطة الخاصة بالزبون
+    const campaignsTable = document.getElementById('client-campaigns-table');
+    const campaignsCountBadge = document.getElementById('campaigns-count-badge');
+    
+    let activeCampaignsCount = 0;
+    let campaignsHtml = '';
+
+    metaCampaigns.forEach(camp => {
+        if (camp.name.toLowerCase().includes(client.campaign_keyword.toLowerCase())) {
+            const spend = camp.insights?.data?.[0] ? parseFloat(camp.insights.data[0].spend || 0) : 0;
+            if (spend > 0) {
+                activeCampaignsCount++;
+                const fee = spend * 0.20;
+                const total = spend + fee;
+                
+                campaignsHtml += `
+                    <tr class="hover:bg-slate-50/50 transition">
+                        <td class="p-3 font-bold text-gray-800">${camp.name}</td>
+                        <td class="p-3 text-center font-semibold text-gray-600">$${spend.toFixed(2)}</td>
+                        <td class="p-3 text-center font-semibold text-purple-650">+ $${fee.toFixed(2)}</td>
+                        <td class="p-3 text-left font-black text-purple-700">$${total.toFixed(2)}</td>
+                    </tr>
+                `;
+            }
+        }
+    });
+
+    if (activeCampaignsCount > 0) {
+        campaignsTable.innerHTML = campaignsHtml;
+        campaignsCountBadge.innerText = `${activeCampaignsCount} ${activeCampaignsCount === 1 ? 'حملة' : 'حملات'}`;
+    } else {
+        campaignsTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="p-6 text-center text-gray-400 font-bold">لا توجد حملات إعلانية نشطة مرتبطة بحسابك حالياً.</td>
+            </tr>
+        `;
+        campaignsCountBadge.innerText = `0 حملة`;
+    }
+
     const tbody = document.getElementById('client-payments-table');
     tbody.innerHTML = '';
 
@@ -223,4 +262,45 @@ function copyRedotpayId(event) {
 function handleLogout() {
     localStorage.clear();
     window.location.href = 'index.html';
+}
+
+// ==========================================
+//  قائمة حاسبة الإعلانات الجانبية (Calculator Drawer)
+// ==========================================
+function openCalculatorDrawer() {
+    document.getElementById('calculator-drawer-overlay').classList.remove('hidden');
+    document.getElementById('calculator-drawer').classList.remove('-translate-x-full');
+    calculateEstimatedBudget(); // تشغيل الحساب المبدئي
+}
+
+function closeCalculatorDrawer() {
+    document.getElementById('calculator-drawer-overlay').classList.add('hidden');
+    document.getElementById('calculator-drawer').classList.add('-translate-x-full');
+}
+
+function calculateEstimatedBudget() {
+    const campaigns = parseInt(document.getElementById('calc-campaigns').value) || 1;
+    const budget = parseFloat(document.getElementById('calc-budget').value) || 5;
+    const days = parseInt(document.getElementById('calc-days').value) || 7;
+
+    // تحديث قيم النصوص بجانب المؤشرات
+    document.getElementById('calc-campaigns-val').innerText = campaigns;
+    document.getElementById('calc-budget-val').innerText = `$${budget}`;
+    document.getElementById('calc-days-val').innerText = `${days} ${days === 1 ? 'يوم' : 'أيام'}`;
+
+    // الحسابات
+    const netUSD = campaigns * budget * days;
+    const feeUSD = netUSD * 0.20; // 20% عمولة المنصة
+    const totalUSD = netUSD + feeUSD; // الإجمالي بالدولار
+    
+    // جلب سعر الصرف للزبون من الجلسة (الافتراضي 230)
+    const exchangeRate = (user && user.exchange_rate) ? parseInt(user.exchange_rate) : 230;
+    const totalDZD = totalUSD * exchangeRate;
+
+    // تحديث النصوص في كارت الفاتورة
+    document.getElementById('calc-net-usd').innerText = `$${netUSD.toFixed(2)}`;
+    document.getElementById('calc-fee-usd').innerText = `+ $${feeUSD.toFixed(2)}`;
+    document.getElementById('calc-total-usd').innerText = `$${totalUSD.toFixed(2)}`;
+    document.getElementById('calc-rate').innerText = `${exchangeRate} دج`;
+    document.getElementById('calc-total-dzd').innerText = `${Math.round(totalDZD).toLocaleString('fr-FR')} دج`;
 }

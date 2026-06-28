@@ -68,7 +68,27 @@
             </div>
         </div>
 
-        <!-- ===== البطاقات الإحصائية ===== -->
+        <!-- ===== أزرار الإجراءات السريعة ===== -->
+        <div class="grid grid-cols-3 gap-3 px-4 mt-5">
+            <button onclick="openCalculatorDrawer()"
+                class="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition">
+                <span class="text-lg">🧮</span>
+                <span>حاسبة الإعلانات</span>
+            </button>
+            <button onclick="openPayModal()"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition">
+                <span class="text-lg">💳</span>
+                <span>شحن الرصيد</span>
+            </button>
+            <a href="https://wa.me/213657693583?text=مرحباً،%20أنا%20العميل%20المسجل%20لديكم.%20أريد%20الاستفسار%20عن%20تفاصيل%20في%20حسابي%20أو%20طلب%20مساعدة."
+                target="_blank"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition text-decoration-none">
+                <span class="text-lg">📞</span>
+                <span>الدعم الفني</span>
+            </a>
+        </div>
+
+        <!-- ===== -البطاقات الإحصائية ===== -->
         <div class="grid grid-cols-2 gap-4 px-4 mt-5">
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-xs font-medium mb-1">مصاريف الإعلانات</p>
@@ -77,6 +97,33 @@
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                 <p class="text-gray-400 text-xs font-medium mb-1">إجمالي المدفوع</p>
                 <p class="text-xl font-bold text-emerald-600" id="client-total-paid">0.00 $</p>
+            </div>
+        </div>
+
+        <!-- ===== جدول الحملات الإعلانية النشطة ===== -->
+        <div class="bg-white mx-4 mt-5 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700 text-sm flex items-center gap-1.5">
+                    <span>📢</span> حملاتك الإعلانية النشطة
+                </h3>
+                <span id="campaigns-count-badge" class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">0 حملة</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-right text-sm">
+                    <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                        <tr>
+                            <th class="p-3">اسم الحملة الإعلانية</th>
+                            <th class="p-3 text-center">المبلغ المستهلك ($)</th>
+                            <th class="p-3 text-center">العمولة المضافة (20%)</th>
+                            <th class="p-3 text-left">التكلفة الكلية</th>
+                        </tr>
+                    </thead>
+                    <tbody id="client-campaigns-table" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="4" class="p-4 text-center text-gray-400 font-bold">لا توجد حملات إعلانية نشطة مرتبطة بحسابك حالياً.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -149,6 +196,92 @@
                     إغلاق
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- ===== قائمة حاسبة الإعلانات الجانبية (Calculator Drawer) ===== -->
+    <div id="calculator-drawer-overlay" onclick="closeCalculatorDrawer()" 
+        class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 transition-opacity"></div>
+    <div id="calculator-drawer" 
+        class="fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 flex flex-col text-right">
+        
+        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-purple-50">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🧮</span>
+                <h2 class="font-bold text-purple-800 text-sm">حاسبة تمويل الإعلانات</h2>
+            </div>
+            <button onclick="closeCalculatorDrawer()" class="text-gray-500 hover:text-red-500 text-2xl font-bold cursor-pointer leading-none">&times;</button>
+        </div>
+
+        <div class="p-5 flex-1 overflow-y-auto space-y-5">
+            <!-- Number of Campaigns -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs font-bold text-gray-500">
+                    <span>عدد الحملات الإعلانية النشطة:</span>
+                    <span id="calc-campaigns-val" class="text-purple-600 font-black text-sm">1</span>
+                </div>
+                <input type="range" id="calc-campaigns" min="1" max="10" step="1" value="1" oninput="calculateEstimatedBudget()"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+            </div>
+
+            <!-- Daily Budget per Campaign in USD -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs font-bold text-gray-500">
+                    <span>الميزانية اليومية لكل حملة ($):</span>
+                    <span id="calc-budget-val" class="text-purple-600 font-black text-sm">$3</span>
+                </div>
+                <input type="range" id="calc-budget" min="3" max="100" step="1" value="3" oninput="calculateEstimatedBudget()"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+            </div>
+
+            <!-- Duration in Days -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs font-bold text-gray-500">
+                    <span>مدة تشغيل الإعلانات بالأيام:</span>
+                    <span id="calc-days-val" class="text-purple-600 font-black text-sm">7 أيام</span>
+                </div>
+                <input type="range" id="calc-days" min="1" max="30" step="1" value="7" oninput="calculateEstimatedBudget()"
+                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+            </div>
+
+            <!-- Invoice breakdown card -->
+            <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
+                <div class="flex justify-between text-xs font-bold pb-2 border-b border-gray-150">
+                    <span class="text-gray-400">صافي ميزانية الإعلان:</span>
+                    <span id="calc-net-usd" class="text-gray-700">$35.00</span>
+                </div>
+                <div class="flex justify-between text-xs font-bold pb-2 border-b border-gray-150">
+                    <span class="text-gray-400">عمولة الإدارة والتمويل (20%):</span>
+                    <span id="calc-fee-usd" class="text-purple-650 font-black">+ $7.00</span>
+                </div>
+                <div class="flex justify-between text-xs font-bold pb-2 border-b border-gray-150">
+                    <span class="text-gray-400">إجمالي التكلفة بالدولار:</span>
+                    <span id="calc-total-usd" class="text-gray-700">$42.00</span>
+                </div>
+                <div class="flex justify-between text-xs font-bold pb-2 border-b border-gray-150">
+                    <span class="text-gray-400">سعر الصرف الأخير:</span>
+                    <span id="calc-rate" class="text-gray-700">230 دج</span>
+                </div>
+                
+                <!-- DZD total Output Highlighted -->
+                <div class="pt-2.5 flex flex-col items-center justify-center bg-purple-50 border border-purple-100 rounded-xl py-3 px-2">
+                    <span class="text-[10px] font-bold text-gray-400 mb-0.5">التكلفة المطلوبة بالدينار الجزائري:</span>
+                    <span id="calc-total-dzd" class="text-xl font-black text-purple-700 tracking-tight">
+                        9,660 دج
+                    </span>
+                </div>
+            </div>
+            
+            <p class="text-[9px] text-gray-400 font-bold leading-normal text-center">
+                * الحساب تقديري بناءً على المعطيات وسعر الصرف الخاص بك المسجل حالياً في لوحتك.
+            </p>
+        </div>
+
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="closeCalculatorDrawer()" 
+                class="w-full bg-purple-650 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-sm transition cursor-pointer text-center">
+                إغلاق الحاسبة
+            </button>
         </div>
     </div>
 
