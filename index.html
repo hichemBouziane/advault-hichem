@@ -148,7 +148,7 @@
 
                                 {/* CTA Navbar Button */}
                                 <button 
-                                    onClick={() => setIsLoginOpen(true)}
+                                    onClick={() => window.location.href = 'register.html'}
                                     className="hidden sm:inline-block bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition shadow-lg shadow-purple-600/10 cursor-pointer"
                                 >
                                     ابدأ الآن
@@ -185,7 +185,7 @@
                                 {/* Action Buttons */}
                                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-16">
                                     <button 
-                                        onClick={() => setIsLoginOpen(true)}
+                                        onClick={() => window.location.href = 'register.html'}
                                         className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-lg px-8 py-4 rounded-2xl shadow-xl shadow-purple-600/25 dark:shadow-purple-500/10 transition-all hover:-translate-y-0.5 cursor-pointer text-center"
                                     >
                                         ابدأ الآن مجاناً
@@ -416,7 +416,7 @@
                                     توقف عن مواجهة مشاكل الحظر، نقص التمويل، وغياب الشفافية المالية. انضم اليوم إلى رواد الأعمال الذين وثقوا بـ AdVault.
                                 </p>
                                 <button 
-                                    onClick={() => setIsLoginOpen(true)}
+                                    onClick={() => window.location.href = 'register.html'}
                                     className="bg-white hover:bg-purple-50 text-purple-950 font-black text-lg px-8 py-4 rounded-2xl shadow-xl transition-all hover:scale-105 cursor-pointer mt-4"
                                 >
                                     أنشئ حسابك وسجل الآن
@@ -596,6 +596,12 @@
 
                                         {/* Error Alert Box */}
                                         <p id="login-error" className="text-red-600 bg-red-50 dark:bg-red-950/20 dark:border-red-900/30 p-4 rounded-2xl border border-red-100 text-sm font-bold text-center hidden mt-3 transition-all duration-200"></p>
+
+                                        {/* Register Link */}
+                                        <div className="text-center pt-2 text-xs font-black">
+                                            <span className="text-slate-400">ليس لديك حساب؟ </span>
+                                            <a href="register.html" className="text-purple-600 dark:text-purple-400 hover:underline">سجل معنا كزبون جديد</a>
+                                        </div>
 
                                     </div>
 

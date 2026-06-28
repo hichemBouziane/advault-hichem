@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAdminData();
     loadSummaryCards();
     fetchHeaderBalance(); // استدعاء دالة جلب الرصيد للهيدر
+    checkPendingRequests(); // استدعاء دالة جلب عدد الطلبات المعلقة
 });
 
 // ==========================================
@@ -820,4 +821,30 @@ function speakAndStatus(message) {
 function handleLogout() {
     localStorage.clear();
     window.location.href = 'index.html';
+}
+
+// ==========================================
+//  التحقق من طلبات التسجيل المعلقة والعداد
+// ==========================================
+async function checkPendingRequests() {
+    try {
+        const { count, error } = await _supabase
+            .from('clients')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'pending');
+        
+        if (!error && count !== null) {
+            const badge = document.getElementById('pending-badge');
+            if (badge) {
+                if (count > 0) {
+                    badge.innerText = count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+    } catch (e) {
+        console.error("خطأ في التحقق من عدد الطلبات المعلقة:", e);
+    }
 }
