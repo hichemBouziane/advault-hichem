@@ -125,6 +125,13 @@
                     </tbody>
                 </table>
             </div>
+            <!-- زر عرض المزيد للحملات -->
+            <div id="campaigns-show-more-container" class="p-3 border-t border-gray-100 text-center hidden">
+                <button id="campaigns-toggle-btn" onclick="toggleCampaignsVisibility()"
+                    class="bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-5 py-2.5 rounded-xl text-xs transition cursor-pointer">
+                    👁️ عرض المزيد (+0 حملات إضافية)
+                </button>
+            </div>
         </div>
 
         <!-- ===== جدول المدفوعات ===== -->
@@ -144,6 +151,13 @@
                     </thead>
                     <tbody id="client-payments-table" class="divide-y divide-gray-100"></tbody>
                 </table>
+            </div>
+            <!-- زر عرض المزيد للمدفوعات -->
+            <div id="payments-show-more-container" class="p-3 border-t border-gray-100 text-center hidden">
+                <button id="payments-toggle-btn" onclick="togglePaymentsVisibility()"
+                    class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-5 py-2.5 rounded-xl text-xs transition cursor-pointer">
+                    👁️ عرض المزيد (+0 مدفوعات إضافية)
+                </button>
             </div>
         </div>
 

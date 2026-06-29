@@ -178,61 +178,39 @@ async function loadClientData(client) {
     document.getElementById('client-total-paid').innerText = `${totalPaidEuro.toFixed(2)} $`;
 
     // تصفية وعرض تفاصيل الحملات النشطة الخاصة بالزبون
-    const campaignsTable = document.getElementById('client-campaigns-table');
-    const campaignsCountBadge = document.getElementById('campaigns-count-badge');
-    
-    let activeCampaignsCount = 0;
-    let campaignsHtml = '';
-
+    const activeCampaigns = [];
     metaCampaigns.forEach(camp => {
         if (camp.name.toLowerCase().includes(client.campaign_keyword.toLowerCase())) {
             const spend = camp.insights?.data?.[0] ? parseFloat(camp.insights.data[0].spend || 0) : 0;
             if (spend > 0) {
-                activeCampaignsCount++;
                 const fee = spend * 0.20;
                 const total = spend + fee;
-                
-                campaignsHtml += `
-                    <tr class="hover:bg-slate-50/50 transition">
-                        <td class="p-3 font-bold text-gray-800">${camp.name}</td>
-                        <td class="p-3 text-center font-semibold text-gray-600">$${spend.toFixed(2)}</td>
-                        <td class="p-3 text-center font-semibold text-purple-650">+ $${fee.toFixed(2)}</td>
-                        <td class="p-3 text-left font-black text-purple-700">$${total.toFixed(2)}</td>
-                    </tr>
-                `;
+                activeCampaigns.push({
+                    name: camp.name,
+                    spend: spend,
+                    fee: fee,
+                    total: total
+                });
             }
         }
     });
 
-    if (activeCampaignsCount > 0) {
-        campaignsTable.innerHTML = campaignsHtml;
-        campaignsCountBadge.innerText = `${activeCampaignsCount} ${activeCampaignsCount === 1 ? 'حملة' : 'حملات'}`;
-    } else {
-        campaignsTable.innerHTML = `
-            <tr>
-                <td colspan="4" class="p-6 text-center text-gray-400 font-bold">لا توجد حملات إعلانية نشطة مرتبطة بحسابك حالياً.</td>
-            </tr>
-        `;
-        campaignsCountBadge.innerText = `0 حملة`;
-    }
+    // عكس الترتيب (الأحدث أولاً)
+    activeCampaigns.reverse();
 
-    const tbody = document.getElementById('client-payments-table');
-    tbody.innerHTML = '';
+    // حفظ الحملات كحالة عامة للتحكم في عرض المزيد/أقل
+    window.allActiveCampaigns = activeCampaigns;
+    window.campaignsShowAll = false;
+    
+    // تشغيل دالة العرض
+    renderCampaignsList();
 
-    if (!payments || payments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">لا توجد مدفوعات مسجلة بعد</td></tr>';
-        return;
-    }
+    // حفظ المدفوعات كحالة عامة للتحكم في عرض المزيد/أقل
+    window.allPayments = payments || [];
+    window.paymentsShowAll = false;
 
-    payments.forEach(p => {
-        tbody.innerHTML += `
-            <tr class="hover:bg-gray-50 transition">
-                <td class="p-3 text-gray-500 text-xs">${p.date}</td>
-                <td class="p-3 text-emerald-600 font-bold">${parseFloat(p.amount_euro).toFixed(2)} $</td>
-                <td class="p-3 font-bold text-gray-700">${parseFloat(p.amount_dzd).toLocaleString('fr-FR')} دج</td>
-                <td class="p-3 text-gray-400 text-xs">${p.note || '-'}</td>
-            </tr>`;
-    });
+    // تشغيل دالة العرض
+    renderPaymentsList();
 }
 
 // ==========================================
@@ -303,4 +281,109 @@ function calculateEstimatedBudget() {
     document.getElementById('calc-total-usd').innerText = `$${totalUSD.toFixed(2)}`;
     document.getElementById('calc-rate').innerText = `${exchangeRate} دج`;
     document.getElementById('calc-total-dzd').innerText = `${Math.round(totalDZD).toLocaleString('fr-FR')} دج`;
+}
+
+// ==========================================
+//  دوال عرض وتصفية الحملات الإعلانية مع تجميعها (10 إعلانات كحد أقصى)
+// ==========================================
+function renderCampaignsList() {
+    const campaignsTable = document.getElementById('client-campaigns-table');
+    const campaignsCountBadge = document.getElementById('campaigns-count-badge');
+    const showMoreContainer = document.getElementById('campaigns-show-more-container');
+    const toggleBtn = document.getElementById('campaigns-toggle-btn');
+
+    const totalCount = window.allActiveCampaigns.length;
+
+    if (totalCount === 0) {
+        campaignsTable.innerHTML = `
+            <tr>
+                <td colspan="4" class="p-6 text-center text-gray-400 font-bold">لا توجد حملات إعلانية نشطة مرتبطة بحسابك حالياً.</td>
+            </tr>
+        `;
+        campaignsCountBadge.innerText = `0 حملة`;
+        showMoreContainer.classList.add('hidden');
+        return;
+    }
+
+    campaignsCountBadge.innerText = `${totalCount} ${totalCount === 1 ? 'حملة' : 'حملات'}`;
+
+    // تحديد كم حملة سنعرض (بحد أقصى 10 افتراضياً)
+    let displayCount = totalCount;
+    if (totalCount > 10 && !window.campaignsShowAll) {
+        displayCount = 10;
+        showMoreContainer.classList.remove('hidden');
+        toggleBtn.innerText = `👁️ عرض المزيد (+${totalCount - 10} حملات إضافية)`;
+    } else if (totalCount > 10 && window.campaignsShowAll) {
+        showMoreContainer.classList.remove('hidden');
+        toggleBtn.innerText = `👁️ عرض أقل`;
+    } else {
+        showMoreContainer.classList.add('hidden');
+    }
+
+    let campaignsHtml = '';
+    for (let i = 0; i < displayCount; i++) {
+        const camp = window.allActiveCampaigns[i];
+        campaignsHtml += `
+            <tr class="hover:bg-slate-50/50 transition">
+                <td class="p-3 font-bold text-gray-800">${camp.name}</td>
+                <td class="p-3 text-center font-semibold text-gray-600">$${camp.spend.toFixed(2)}</td>
+                <td class="p-3 text-center font-semibold text-purple-650">+ $${camp.fee.toFixed(2)}</td>
+                <td class="p-3 text-left font-black text-purple-700">$${camp.total.toFixed(2)}</td>
+            </tr>
+        `;
+    }
+    campaignsTable.innerHTML = campaignsHtml;
+}
+
+function toggleCampaignsVisibility() {
+    window.campaignsShowAll = !window.campaignsShowAll;
+    renderCampaignsList();
+}
+
+// ==========================================
+//  دوال عرض وتصفية المدفوعات مع تجميعها (10 مدفوعات كحد أقصى)
+// ==========================================
+function renderPaymentsList() {
+    const tbody = document.getElementById('client-payments-table');
+    const showMoreContainer = document.getElementById('payments-show-more-container');
+    const toggleBtn = document.getElementById('payments-toggle-btn');
+
+    const totalCount = window.allPayments.length;
+
+    if (totalCount === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-400">لا توجد مدفوعات مسجلة بعد</td></tr>';
+        showMoreContainer.classList.add('hidden');
+        return;
+    }
+
+    // تحديد كم دفعة سنعرض (بحد أقصى 10 افتراضياً)
+    let displayCount = totalCount;
+    if (totalCount > 10 && !window.paymentsShowAll) {
+        displayCount = 10;
+        showMoreContainer.classList.remove('hidden');
+        toggleBtn.innerText = `👁️ عرض المزيد (+${totalCount - 10} مدفوعات إضافية)`;
+    } else if (totalCount > 10 && window.paymentsShowAll) {
+        showMoreContainer.classList.remove('hidden');
+        toggleBtn.innerText = `👁️ عرض أقل`;
+    } else {
+        showMoreContainer.classList.add('hidden');
+    }
+
+    let paymentsHtml = '';
+    for (let i = 0; i < displayCount; i++) {
+        const p = window.allPayments[i];
+        paymentsHtml += `
+            <tr class="hover:bg-gray-50 transition">
+                <td class="p-3 text-gray-500 text-xs">${p.date}</td>
+                <td class="p-3 text-emerald-600 font-bold">${parseFloat(p.amount_euro).toFixed(2)} $</td>
+                <td class="p-3 font-bold text-gray-700">${parseFloat(p.amount_dzd).toLocaleString('fr-FR')} دج</td>
+                <td class="p-3 text-gray-400 text-xs">${p.note || '-'}</td>
+            </tr>`;
+    }
+    tbody.innerHTML = paymentsHtml;
+}
+
+function togglePaymentsVisibility() {
+    window.paymentsShowAll = !window.paymentsShowAll;
+    renderPaymentsList();
 }
