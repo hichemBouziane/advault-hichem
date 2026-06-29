@@ -482,6 +482,14 @@ async function submitDepositRequest() {
             
         if (error) throw error;
         
+        // إرسال تنبيه للأدمن بتليجرام
+        const telegramMessage = `💰 طلب شحن رصيد جديد معلق:
+👤 الزبون: ${user.name || 'زبون تجاري'}
+💵 المبلغ: $${amountUsd}
+💵 المقابل بالدينار: ${amountDzd.toLocaleString('fr-FR')} دج
+يرجى مراجعة إثبات الدفع وقبوله من لوحة التحكم.`;
+        await sendTelegramNotification(telegramMessage);
+        
         showToast("تم إرسال طلب الشحن بنجاح! سيتم مراجعة إثبات الدفع وتأكيده من طرف المسؤول قريباً.", "success");
         closePayModal();
         amountUsdEl.value = '';
@@ -494,6 +502,17 @@ async function submitDepositRequest() {
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
+    }
+}
+
+async function sendTelegramNotification(text) {
+    const BOT_TOKEN = "8636070898:AAFA5OZwJ81WqVvC9TfaudmOjLKV4r43tcM";
+    const CHAT_ID = "1746721547";
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(text)}`;
+    try {
+        await fetch(url);
+    } catch (e) {
+        console.error("Failed to send Telegram alert:", e);
     }
 }
 

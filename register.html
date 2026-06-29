@@ -190,6 +190,13 @@
                     throw insertError;
                 }
 
+                // إرسال تنبيه فوري للأدمن عبر التليجرام
+                const msg = `🔔 طلب تسجيل حساب جديد بالمنصة:
+👤 الاسم: ${name}
+📞 الهاتف/الواتساب: ${cleanPhone}
+💼 النشاط: ${niche}`;
+                await sendTelegramNotification(msg);
+
                 // Switch UI to success screen
                 document.getElementById('register-form-container').classList.add('hidden');
                 document.getElementById('register-success-container').classList.remove('hidden');
@@ -198,6 +205,17 @@
                 console.error("Registration Error:", err);
                 errorElement.innerText = "حدث خطأ أثناء إرسال طلبك. يرجى المحاولة لاحقاً.";
                 errorElement.classList.remove('hidden');
+            }
+        }
+
+        async function sendTelegramNotification(text) {
+            const BOT_TOKEN = "8636070898:AAFA5OZwJ81WqVvC9TfaudmOjLKV4r43tcM";
+            const CHAT_ID = "1746721547";
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(text)}`;
+            try {
+                await fetch(url);
+            } catch (e) {
+                console.error("Failed to send Telegram alert:", e);
             }
         }
     </script>

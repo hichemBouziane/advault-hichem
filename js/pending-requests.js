@@ -152,6 +152,16 @@ async function submitActivation() {
         closeActivationModal();
         loadPendingRequests();
 
+        // فتح الواتساب تلقائياً للتواصل وتنبيه العميل بالتفعيل
+        const phoneInput = document.getElementById('activate-phone');
+        if (phoneInput && phoneInput.value) {
+            const cleanPhone = phoneInput.value.replace(/\s+/g, '');
+            const welcomeText = `مرحباً ${name}، يسعدني إعلامك بأنه تم تفعيل حسابك بنجاح على منصة AdVault لإدارة الإعلانات. يمكنك الآن تسجيل الدخول إلى حسابك باستخدام رقم هاتفك وكلمة المرور الخاصة بك.`;
+            const encodedWelcome = encodeURIComponent(welcomeText);
+            const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedWelcome}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
     } catch (err) {
         console.error("Error activating client:", err);
         showToast("حدث خطأ أثناء تفعيل الحساب في قاعدة البيانات", "error");
@@ -391,6 +401,25 @@ async function approveDeposit(id, clientId, clientName, amountUsd, amountDzd) {
         
         showToast(`تم قبول الدفع وإضافة $${amountUsd} بنجاح لحساب (${clientName})!`, "success");
         loadPendingDeposits();
+        
+        // فتح الواتساب تلقائياً لتأكيد شحن الرصيد للزبون
+        try {
+            const { data: clientData } = await _supabase
+                .from('clients')
+                .select('phone')
+                .eq('id', clientId)
+                .maybeSingle();
+                
+            if (clientData && clientData.phone) {
+                const cleanPhone = clientData.phone.replace(/\s+/g, '');
+                const confirmText = `مرحباً ${clientName}، تم تأكيد وقبول عملية الشحن الخاصة بك بقيمة $${amountUsd} (${amountDzd.toLocaleString('fr-FR')} دج). تم إضافة الرصيد إلى حسابك بنجاح. شكراً لتعاملك معنا!`;
+                const encodedConfirm = encodeURIComponent(confirmText);
+                const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedConfirm}`;
+                window.open(whatsappUrl, '_blank');
+            }
+        } catch (e) {
+            console.error("Failed to redirect to WhatsApp:", e);
+        }
         
     } catch (err) {
         console.error("Error approving deposit:", err);
