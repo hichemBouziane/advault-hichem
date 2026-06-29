@@ -452,11 +452,11 @@ async function submitDepositRequest() {
     const file = screenshotEl.files[0];
     
     if (isNaN(amountUsd) || amountUsd <= 0) {
-        alert("يرجى إدخال مبلغ صحيح بالدولار.");
+        showToast("يرجى إدخال مبلغ صحيح بالدولار.", "error");
         return;
     }
     if (!file) {
-        alert("يرجى رفع صورة إثبات الدفع (سكرين شوت).");
+        showToast("يرجى رفع صورة إثبات الدفع (سكرين شوت).", "error");
         return;
     }
     
@@ -482,7 +482,7 @@ async function submitDepositRequest() {
             
         if (error) throw error;
         
-        alert("✅ تم إرسال طلب الشحن بنجاح! سيتم مراجعة إثبات الدفع وتأكيده من طرف المسؤول قريباً.");
+        showToast("تم إرسال طلب الشحن بنجاح! سيتم مراجعة إثبات الدفع وتأكيده من طرف المسؤول قريباً.", "success");
         closePayModal();
         amountUsdEl.value = '';
         screenshotEl.value = '';
@@ -490,9 +490,57 @@ async function submitDepositRequest() {
         
     } catch (err) {
         console.error(err);
-        alert("❌ فشل إرسال الطلب: " + err.message);
+        showToast("فشل إرسال الطلب: " + err.message, "error");
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
     }
+}
+
+// ==========================================
+//  دالة إظهار التنبيهات المخصصة الجميلة (Toast Notifications)
+// ==========================================
+function showToast(message, type = 'success') {
+    // إنشاء عنصر التنبيه
+    const toast = document.createElement('div');
+    toast.className = `fixed top-5 right-5 z-50 flex items-center gap-3 bg-white shadow-2xl rounded-2xl p-4 border-r-4 ${type === 'success' ? 'border-emerald-500' : 'border-red-500'} max-w-xs transform translate-x-80 opacity-0 transition-all duration-300 ease-out text-right`;
+    
+    toast.innerHTML = `
+        <div class="text-2xl">${type === 'success' ? '✅' : '❌'}</div>
+        <div class="flex-1">
+            <h4 class="font-bold text-xs text-gray-800">${type === 'success' ? 'تمت العملية بنجاح' : 'تنبيه'}</h4>
+            <p class="text-[10px] text-gray-500 mt-0.5 leading-normal">${message}</p>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // تشغيل نغمة صوتية تفاعلية خفيفة
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(type === 'success' ? 880 : 440, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(type === 'success' ? 1100 : 330, ctx.currentTime + 0.1);
+        g.gain.setValueAtTime(0.15, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+        o.start(ctx.currentTime);
+        o.stop(ctx.currentTime + 0.3);
+    } catch (_) {}
+
+    // حركة الدخول (Slide In)
+    setTimeout(() => {
+        toast.classList.remove('translate-x-80', 'opacity-0');
+    }, 50);
+    
+    // حركة الخروج والحذف (Slide Out & Remove)
+    setTimeout(() => {
+        toast.classList.add('translate-x-80', 'opacity-0');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 4500);
 }
