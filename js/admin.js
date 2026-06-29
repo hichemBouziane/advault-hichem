@@ -828,20 +828,29 @@ function handleLogout() {
 // ==========================================
 async function checkPendingRequests() {
     try {
-        const { count, error } = await _supabase
+        // 1. جلب عدد طلبات التسجيل المعلقة
+        const { count: regCount, error: regError } = await _supabase
             .from('clients')
             .select('*', { count: 'exact', head: true })
             .eq('role', 'pending');
+            
+        // 2. جلب عدد طلبات شحن الرصيد المعلقة
+        const { count: payCount, error: payError } = await _supabase
+            .from('payment_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
         
-        if (!error && count !== null) {
-            const badge = document.getElementById('pending-badge');
-            if (badge) {
-                if (count > 0) {
-                    badge.innerText = count;
-                    badge.classList.remove('hidden');
-                } else {
-                    badge.classList.add('hidden');
-                }
+        let totalCount = 0;
+        if (!regError && regCount !== null) totalCount += regCount;
+        if (!payError && payCount !== null) totalCount += payCount;
+        
+        const badge = document.getElementById('pending-badge');
+        if (badge) {
+            if (totalCount > 0) {
+                badge.innerText = totalCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
             }
         }
     } catch (e) {

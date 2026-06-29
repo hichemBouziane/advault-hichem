@@ -182,31 +182,51 @@
                     </button>
                 </div>
                 <div class="bg-red-50 border border-red-100 rounded-2xl p-4 text-center">
-                    <p class="text-xs text-gray-500 mb-2">المبلغ المستحق</p>
+                    <p class="text-xs text-gray-500 mb-2">المبلغ المستحق حالياً</p>
                     <div id="modal-balance">
                         <span class="text-2xl font-bold text-red-600">0 دج</span>
                     </div>
                 </div>
-                <p class="text-xs text-gray-400 text-center">بعد الدفع أخبر المسؤول لتأكيد الدفعة في النظام</p>
+
+                <!-- نموذج إرسال طلب الشحن -->
+                <div class="border-t border-gray-100 pt-4 space-y-3">
+                    <p class="text-xs font-bold text-gray-700">✍️ تقديم طلب شحن جديد:</p>
+                    
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ المراد شحنه ($)</label>
+                        <input type="number" id="deposit-amount-usd" min="1" step="any" placeholder="أدخل القيمة بالدولار (مثال: 50)" required
+                            class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-600 text-xs">
+                        <p class="text-[9px] text-gray-400 mt-1 font-semibold">المبلغ المقابل بالدينار: <span id="deposit-dzd-preview" class="text-emerald-600 font-extrabold text-[11px]">0 دج</span></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 mb-1">صورة إثبات الدفع (لقطة شاشة)</label>
+                        <input type="file" id="deposit-screenshot" accept="image/*" required
+                            class="w-full px-2 py-1.5 rounded-xl border border-gray-200 text-[10px] bg-gray-50 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer">
+                    </div>
+
+                    <button id="submit-deposit-btn" onclick="submitDepositRequest()"
+                        class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1">
+                        🚀 إرسال طلب الشحن للتأكيد
+                    </button>
+                </div>
 
                 <!-- ================= قسم الواتساب والوكلاء المضاف حديثاً ================= -->
-                <div class="border-t border-gray-100 pt-4 space-y-2">
+                <div class="border-t border-gray-100 pt-3 space-y-2">
                     <p class="text-[11px] font-bold text-gray-500 mb-1 flex items-center gap-1">
                         <span>🛡️</span> خيارات شحن بديلة:
                     </p>
                     <!-- زر الواتساب مع نص الرسالة التلقائية المطلوبة -->
                     <a href="https://wa.me/213796517899?text=مرحباً،%20أود%20التواصل%20مع%20الوكلاء%20الموثوقين%20لشراء%20الدولار%20في%20العاصمة.%20كم%20سعر%20الدولار%20اليوم؟%20وأين%20موقعكم%20للتقرب%20إليكم%20في%20أقرب%20وقت%20ممكن؟" 
                        target="_blank" 
-                       class="w-full bg-[#25D366] hover:bg-[#20ba59] text-white font-bold py-3 px-4 rounded-2xl transition duration-200 flex items-center justify-center gap-2 text-xs shadow-md shadow-green-600/10 cursor-pointer">
-                        <!-- أيقونة واتساب SVG -->
-                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.94 0c3.205.001 6.216 1.248 8.48 3.515 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.618-5.33 11.942-11.943 11.942-2.01-.001-3.987-.508-5.742-1.477L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.747 1.451 5.436 0 9.86-4.42 9.863-9.864.001-2.637-1.03-5.114-2.904-6.989-1.873-1.873-4.351-2.904-6.986-2.904-5.44 0-9.865 4.42-9.869 9.865-.001 1.748.498 3.31 1.442 4.797l-.992 3.623 3.702-.97zM16.52 13.3c-.267-.135-1.587-.783-1.834-.872-.248-.09-.429-.135-.61.135-.181.271-.7.872-.859 1.05-.158.179-.317.202-.585.067-.267-.135-1.13-.417-2.152-1.328-.795-.71-1.332-1.588-1.488-1.857-.158-.271-.017-.417.118-.551.121-.12.267-.315.4-.472.133-.158.178-.271.267-.451.09-.18.045-.338-.022-.472-.068-.135-.61-1.472-.836-2.017-.22-.531-.441-.459-.61-.468-.158-.008-.339-.01-.52-.01-.181 0-.476.068-.724.339-.248.271-.951.928-.951 2.264 0 1.336.974 2.626 1.11 2.807.135.18 1.917 2.928 4.644 4.103.649.279 1.156.446 1.551.572.653.208 1.248.178 1.717.108.523-.078 1.587-.649 1.814-1.24.226-.59.226-1.098.158-1.205-.068-.107-.248-.172-.516-.307z"/></svg>
-                        تواصل مع الوكلاء الموثوقين لشراء الدولار في العاصمة
+                       class="w-full bg-[#25D366] hover:bg-[#20ba59] text-white font-bold py-2.5 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 text-[10px] shadow-md shadow-green-600/10 cursor-pointer text-decoration-none">
+                        تواصل مع الوكلاء لشراء الدولار بالعاصمة
                     </a>
                 </div>
                 <!-- ============================================================== -->
 
                 <button onclick="closePayModal()"
-                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-2xl text-sm transition cursor-pointer">
+                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
                     إغلاق
                 </button>
             </div>

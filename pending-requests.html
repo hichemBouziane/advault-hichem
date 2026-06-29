@@ -45,35 +45,83 @@
     <!-- المحتوى الرئيسي -->
     <main class="p-6 flex-1 space-y-6 max-w-6xl mx-auto w-full">
 
+        <!-- ===== تبويبات الطلبات (Tabs) ===== -->
+        <div class="flex gap-2 border-b border-gray-200 pb-px">
+            <button onclick="switchTab('registrations')" id="tab-registrations-btn"
+                class="px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer">
+                👤 طلبات التسجيل الجديدة
+            </button>
+            <button onclick="switchTab('deposits')" id="tab-deposits-btn"
+                class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer">
+                💳 طلبات شحن الرصيد
+            </button>
+        </div>
+
         <!-- بطاقة العرض الرئيسي -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-6 py-5 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
-                <div>
-                    <h2 class="text-base font-bold text-gray-800">قائمة طلبات الانضمام الجديدة</h2>
-                    <p class="text-xs text-gray-400 mt-0.5">يمكنك التواصل مع المتقدمين وتفعيل حساباتهم برقم الهاتف مباشرة</p>
+            
+            <!-- قسم طلبات التسجيل -->
+            <div id="registrations-section" class="block">
+                <div class="px-6 py-5 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-bold text-gray-800">قائمة طلبات الانضمام الجديدة</h2>
+                        <p class="text-xs text-gray-400 mt-0.5">يمكنك التواصل مع المتقدمين وتفعيل حساباتهم برقم الهاتف مباشرة</p>
+                    </div>
+                    <span id="requests-count-badge" class="bg-indigo-600 text-white text-xs font-black px-2.5 py-1 rounded-full">0 طلبات</span>
                 </div>
-                <span id="requests-count-badge" class="bg-indigo-600 text-white text-xs font-black px-2.5 py-1 rounded-full">0 طلبات</span>
+
+                <!-- جدول الطلبات -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                            <tr>
+                                <th class="p-4 font-bold">الاسم الكامل</th>
+                                <th class="p-4 font-bold">رقم الواتساب</th>
+                                <th class="p-4 font-bold">مجال العمل / النشاط</th>
+                                <th class="p-4 font-bold">تاريخ التقديم</th>
+                                <th class="p-4 font-bold text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-requests-table" class="divide-y divide-gray-100">
+                            <!-- تحميل الطلبات ديناميكياً -->
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-gray-400 font-bold">جاري تحميل الطلبات...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <!-- جدول الطلبات -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-right text-sm">
-                    <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
-                        <tr>
-                            <th class="p-4 font-bold">الاسم الكامل</th>
-                            <th class="p-4 font-bold">رقم الواتساب</th>
-                            <th class="p-4 font-bold">مجال العمل / النشاط</th>
-                            <th class="p-4 font-bold">تاريخ التقديم</th>
-                            <th class="p-4 font-bold text-center">الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pending-requests-table" class="divide-y divide-gray-100">
-                        <!-- تحميل الطلبات ديناميكياً -->
-                        <tr>
-                            <td colspan="5" class="p-8 text-center text-gray-400 font-bold">جاري تحميل الطلبات...</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- قسم طلبات شحن الرصيد -->
+            <div id="deposits-section" class="hidden">
+                <div class="px-6 py-5 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-bold text-gray-800">طلبات شحن الرصيد المعلقة</h2>
+                        <p class="text-xs text-gray-400 mt-0.5">يرجى مراجعة إثبات الدفع والتحقق من حسابك قبل قبول الدفعة.</p>
+                    </div>
+                    <span id="deposits-count-badge" class="bg-emerald-600 text-white text-xs font-black px-2.5 py-1 rounded-full">0 طلبات</span>
+                </div>
+
+                <!-- جدول طلبات الشحن -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                            <tr>
+                                <th class="p-4 font-bold">اسم الزبون</th>
+                                <th class="p-4 font-bold text-center">القيمة المطلوبة ($)</th>
+                                <th class="p-4 font-bold text-center">المقدار بالدينار (DZD)</th>
+                                <th class="p-4 font-bold text-center">إثبات الدفع</th>
+                                <th class="p-4 font-bold text-center">تاريخ التقديم</th>
+                                <th class="p-4 font-bold text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-deposits-table" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="6" class="p-8 text-center text-gray-400 font-bold">جاري تحميل الطلبات...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -142,6 +190,26 @@
                         إلغلاق
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== نافذة عرض لقطة الشاشة (Screenshot Preview Modal) ===== -->
+    <div id="screenshot-modal" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity">
+        <div class="bg-white rounded-3xl overflow-hidden max-w-lg w-full flex flex-col text-right shadow-2xl animate-scaleUp">
+            <div class="bg-slate-50 px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700 text-sm flex items-center gap-1.5">
+                    <span>🖼️</span> إثبات الدفع (لقطة شاشة)
+                </h3>
+                <button onclick="closeScreenshotModal()" class="text-gray-500 hover:text-red-500 text-2xl font-bold cursor-pointer leading-none">&times;</button>
+            </div>
+            <div class="p-4 flex-1 flex justify-center items-center bg-slate-100 overflow-y-auto max-h-[70vh]">
+                <img id="modal-screenshot-img" src="" alt="Screenshot Proof" class="max-w-full max-h-[60vh] object-contain rounded-xl shadow border border-gray-200">
+            </div>
+            <div class="p-4 border-t border-gray-100 bg-slate-50 flex gap-2">
+                <button onclick="closeScreenshotModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer text-center">
+                    إغلاق المعاينة
+                </button>
             </div>
         </div>
     </div>

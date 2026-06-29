@@ -20,6 +20,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
         loadClientData(user);
     }
+
+    // مستمع إدخال مبلغ الشحن لعرض المعادل بالدينار لحظياً
+    const amountInput = document.getElementById('deposit-amount-usd');
+    if (amountInput) {
+        amountInput.addEventListener('input', () => {
+            const usd = parseFloat(amountInput.value) || 0;
+            const rate = (user && user.exchange_rate) ? parseInt(user.exchange_rate) : 230;
+            const dzd = Math.round(usd * rate);
+            document.getElementById('deposit-dzd-preview').innerText = `${dzd.toLocaleString('fr-FR')} دج`;
+        });
+    }
 });
 
 // ==========================================
@@ -386,4 +397,102 @@ function renderPaymentsList() {
 function togglePaymentsVisibility() {
     window.paymentsShowAll = !window.paymentsShowAll;
     renderPaymentsList();
+}
+
+// ==========================================
+//  إرسال طلب شحن رصيد جديد مع ضغط لقطة الشاشة
+// ==========================================
+async function compressImageAndGetBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function (event) {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = function () {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const MAX_WIDTH = 800;
+                const MAX_HEIGHT = 800;
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(dataUrl);
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+}
+
+async function submitDepositRequest() {
+    const amountUsdEl = document.getElementById('deposit-amount-usd');
+    const screenshotEl = document.getElementById('deposit-screenshot');
+    const submitBtn = document.getElementById('submit-deposit-btn');
+    
+    const amountUsd = parseFloat(amountUsdEl.value);
+    const file = screenshotEl.files[0];
+    
+    if (isNaN(amountUsd) || amountUsd <= 0) {
+        alert("يرجى إدخال مبلغ صحيح بالدولار.");
+        return;
+    }
+    if (!file) {
+        alert("يرجى رفع صورة إثبات الدفع (سكرين شوت).");
+        return;
+    }
+    
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = "⏳ جاري رفع الطلب...";
+    
+    try {
+        const screenshotBase64 = await compressImageAndGetBase64(file);
+        const rate = (user && user.exchange_rate) ? parseInt(user.exchange_rate) : 230;
+        const amountDzd = Math.round(amountUsd * rate);
+        
+        const { error } = await _supabase
+            .from('payment_requests')
+            .insert([{
+                client_id: user.id,
+                client_name: user.name || 'زبون تجاري',
+                amount_usd: amountUsd,
+                amount_dzd: amountDzd,
+                screenshot_base64: screenshotBase64,
+                status: 'pending'
+            }]);
+            
+        if (error) throw error;
+        
+        alert("✅ تم إرسال طلب الشحن بنجاح! سيتم مراجعة إثبات الدفع وتأكيده من طرف المسؤول قريباً.");
+        closePayModal();
+        amountUsdEl.value = '';
+        screenshotEl.value = '';
+        document.getElementById('deposit-dzd-preview').innerText = '0 دج';
+        
+    } catch (err) {
+        console.error(err);
+        alert("❌ فشل إرسال الطلب: " + err.message);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
 }

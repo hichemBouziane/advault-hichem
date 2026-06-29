@@ -216,3 +216,208 @@ function showToast(message, type = "success") {
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 4000);
 }
+
+// ==========================================
+//  إدارة التبويبات والمزامنة لطلبات الشحن
+// ==========================================
+let activeTab = 'registrations';
+
+function switchTab(tab) {
+    activeTab = tab;
+    const regBtn = document.getElementById('tab-registrations-btn');
+    const depBtn = document.getElementById('tab-deposits-btn');
+    const regSec = document.getElementById('registrations-section');
+    const depSec = document.getElementById('deposits-section');
+    
+    if (tab === 'registrations') {
+        regBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer";
+        depBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer";
+        regSec.classList.remove('hidden');
+        regSec.classList.add('block');
+        depSec.classList.remove('block');
+        depSec.classList.add('hidden');
+        loadPendingRequests();
+    } else {
+        depBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer";
+        regBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer";
+        depSec.classList.remove('hidden');
+        depSec.classList.add('block');
+        regSec.classList.remove('block');
+        regSec.classList.add('hidden');
+        loadPendingDeposits();
+    }
+}
+
+// ربط الدوال بالـ window للتأكد من إتاحتها للقوالب المكتوبة
+window.switchTab = switchTab;
+
+async function loadPendingDeposits() {
+    const tableBody = document.getElementById('pending-deposits-table');
+    const badge = document.getElementById('deposits-count-badge');
+    
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="6" class="p-8 text-center text-gray-400 font-bold">جاري تحميل الطلبات...</td>
+        </tr>
+    `;
+    
+    try {
+        const { data: requests, error } = await _supabase
+            .from('payment_requests')
+            .select('*')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+            
+        if (error) throw error;
+        
+        badge.innerText = `${requests.length} طلبات`;
+        
+        if (requests.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="p-8 text-center text-gray-400 font-bold">🎉 لا توجد أي طلبات شحن رصيد معلقة حالياً.</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tableBody.innerHTML = '';
+        requests.forEach(req => {
+            const date = new Date(req.created_at);
+            const formattedDate = date.toLocaleDateString('ar-DZ', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-slate-50/50 transition';
+            row.innerHTML = `
+                <td class="p-4 font-bold text-gray-800">${req.client_name}</td>
+                <td class="p-4 font-mono font-bold text-center text-purple-700">$${parseFloat(req.amount_usd).toFixed(2)}</td>
+                <td class="p-4 font-mono font-bold text-center text-emerald-600">${Math.round(req.amount_dzd).toLocaleString('fr-FR')} دج</td>
+                <td class="p-4 text-center">
+                    <button onclick="openScreenshotModal('${req.screenshot_base64}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold py-1.5 px-3 rounded-xl transition cursor-pointer">
+                        👁️ عرض الإثبات
+                    </button>
+                </td>
+                <td class="p-4 text-xs text-gray-400 font-semibold text-center">${formattedDate}</td>
+                <td class="p-4 flex justify-center gap-2 flex-wrap">
+                    <button onclick="approveDeposit('${req.id}', '${req.client_id}', '${req.client_name}', ${req.amount_usd}, ${req.amount_dzd})" 
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3.5 rounded-xl flex items-center gap-1 shadow-md shadow-green-600/10 cursor-pointer transition">
+                        ✅ قبول الدفع
+                    </button>
+                    <button onclick="rejectDeposit('${req.id}')" 
+                        class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold py-2 px-3 rounded-xl flex items-center cursor-pointer transition">
+                        ❌ رفض
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    } catch (err) {
+        console.error("Error loading pending deposits:", err);
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="p-8 text-center text-red-500 font-bold">حدث خطأ أثناء تحميل البيانات من الخادم.</td>
+            </tr>
+        `;
+    }
+}
+
+window.loadPendingDeposits = loadPendingDeposits;
+
+function openScreenshotModal(base64Image) {
+    document.getElementById('modal-screenshot-img').src = base64Image;
+    document.getElementById('screenshot-modal').classList.remove('hidden');
+}
+
+function closeScreenshotModal() {
+    document.getElementById('screenshot-modal').classList.add('hidden');
+    document.getElementById('modal-screenshot-img').src = '';
+}
+
+window.openScreenshotModal = openScreenshotModal;
+window.closeScreenshotModal = closeScreenshotModal;
+
+async function approveDeposit(id, clientId, clientName, amountUsd, amountDzd) {
+    const confirmApprove = confirm(`هل أنت متأكد من قبول إيداع بقيمة $${amountUsd} (${amountDzd.toLocaleString('fr-FR')} دج) للزبون (${clientName})؟`);
+    if (!confirmApprove) return;
+    
+    try {
+        // 1. تحديث حالة الطلب إلى approved
+        const { error: reqErr } = await _supabase
+            .from('payment_requests')
+            .update({ status: 'approved', processed_at: new Date().toISOString() })
+            .eq('id', id);
+            
+        if (reqErr) throw reqErr;
+        
+        // 2. إدخال دفعة جديدة في جدول payments
+        const { data: newPayment, error: payErr } = await _supabase
+            .from('payments')
+            .insert([{
+                client_id: clientId,
+                amount_dzd: amountDzd,
+                amount_euro: amountUsd,
+                note: "شحن رصيد تلقائي (Redotpay)",
+                date: new Date().toISOString().split('T')[0]
+            }])
+            .select().single();
+            
+        if (payErr) throw payErr;
+        
+        // 3. حساب وتوزيع الأرباح وأرشفتها في profits_archive لتحديث لوحة تحليلات الأدمن
+        const adCapital = parseFloat((amountDzd * 0.8).toFixed(2));
+        const totalProfit = parseFloat((amountDzd - adCapital).toFixed(2));
+        const companyProfit = parseFloat((totalProfit * 0.30).toFixed(2));
+        const myProfit = parseFloat((totalProfit * 0.70).toFixed(2));
+        
+        const { error: arcErr } = await _supabase
+            .from('profits_archive')
+            .insert([{
+                payment_id: newPayment.id,
+                client_name: clientName,
+                amount_received: amountDzd,
+                ad_capital: adCapital,
+                total_profit: totalProfit,
+                company_profit: companyProfit,
+                my_profit: myProfit
+            }]);
+            
+        if (arcErr) console.error("فشل ترحيل الأرباح للدفعة المقبولة:", arcErr);
+        
+        showToast(`تم قبول الدفع وإضافة $${amountUsd} بنجاح لحساب (${clientName})!`, "success");
+        loadPendingDeposits();
+        
+    } catch (err) {
+        console.error("Error approving deposit:", err);
+        showToast("حدث خطأ أثناء معالجة الطلب وقبول الدفعة", "error");
+    }
+}
+
+async function rejectDeposit(id) {
+    const confirmReject = confirm("هل أنت متأكد من رفض طلب الشحن المعلق هذا؟");
+    if (!confirmReject) return;
+    
+    try {
+        const { error } = await _supabase
+            .from('payment_requests')
+            .update({ status: 'rejected', processed_at: new Date().toISOString() })
+            .eq('id', id);
+            
+        if (error) throw error;
+        
+        showToast("تم رفض طلب الشحن بنجاح.", "success");
+        loadPendingDeposits();
+        
+    } catch (err) {
+        console.error("Error rejecting deposit:", err);
+        showToast("حدث خطأ أثناء رفض الطلب", "error");
+    }
+}
+
+window.approveDeposit = approveDeposit;
+window.rejectDeposit = rejectDeposit;
