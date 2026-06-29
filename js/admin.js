@@ -839,10 +839,17 @@ async function checkPendingRequests() {
             .from('payment_requests')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'pending');
+            
+        // 3. جلب عدد طلبات الخدمات المعلقة
+        const { count: srvCount, error: srvError } = await _supabase
+            .from('service_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
         
         let totalCount = 0;
         if (!regError && regCount !== null) totalCount += regCount;
         if (!payError && payCount !== null) totalCount += payCount;
+        if (!srvError && srvCount !== null) totalCount += srvCount;
         
         const badge = document.getElementById('pending-badge');
         if (badge) {

@@ -44,7 +44,7 @@ async function loadServices() {
         if (allServices.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="p-8 text-center text-gray-400 font-bold">✨ لا توجد أي خدمات معروضة حالياً. اضغط على "+ إضافة خدمة جديدة" للبدء.</td>
+                    <td colspan="7" class="p-8 text-center text-gray-400 font-bold">✨ لا توجد أي خدمات معروضة حالياً. اضغط على "+ إضافة خدمة جديدة" للبدء.</td>
                 </tr>
             `;
             return;
@@ -65,6 +65,19 @@ async function loadServices() {
                 logoHtml = `<img src="${srv.logo_url}" alt="${srv.title}" class="w-10 h-10 object-contain rounded-lg border border-gray-150">`;
             }
 
+            // شارة الحالة
+            let statusBadge = '';
+            const statusVal = srv.status || 'متوفر';
+            if (statusVal === 'متوفر') {
+                statusBadge = `<span class="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold px-2 py-0.5 rounded-lg">متوفر</span>`;
+            } else if (statusVal === 'غير متوفر') {
+                statusBadge = `<span class="bg-red-50 text-red-750 border border-red-100 text-[10px] font-bold px-2 py-0.5 rounded-lg">غير متوفر</span>`;
+            } else if (statusVal === 'قريباً') {
+                statusBadge = `<span class="bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold px-2 py-0.5 rounded-lg">قريباً</span>`;
+            } else {
+                statusBadge = `<span class="bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold px-2 py-0.5 rounded-lg">انتهت الاشتراكات</span>`;
+            }
+
             const row = document.createElement('tr');
             row.className = 'hover:bg-slate-50/50 transition';
             row.innerHTML = `
@@ -76,6 +89,7 @@ async function loadServices() {
                 <td class="p-4 font-bold text-gray-800">${srv.title}</td>
                 <td class="p-4 text-xs text-gray-400 max-w-xs truncate">${srv.description}</td>
                 <td class="p-4"><span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">${srv.category}</span></td>
+                <td class="p-4 text-center">${statusBadge}</td>
                 <td class="p-4 text-center font-mono ${priceClass}">${priceText}</td>
                 <td class="p-4 flex justify-center gap-2 flex-wrap">
                     <button onclick="openEditModal('${srv.id}')"
@@ -120,6 +134,7 @@ function openEditModal(serviceId) {
     document.getElementById('service-description').value = srv.description;
     document.getElementById('service-category').value = srv.category;
     document.getElementById('service-price').value = srv.price_usd;
+    document.getElementById('service-status').value = srv.status || 'متوفر';
     document.getElementById('service-logo').value = srv.logo_url || '';
     document.getElementById('service-whatsapp').value = srv.whatsapp_custom_text || '';
 
@@ -150,6 +165,7 @@ async function handleFormSubmit(event) {
     const description = document.getElementById('service-description').value.trim();
     const category = document.getElementById('service-category').value.trim();
     const price = parseFloat(document.getElementById('service-price').value || 0);
+    const status = document.getElementById('service-status').value;
     const logoUrl = document.getElementById('service-logo').value.trim();
     const whatsappText = document.getElementById('service-whatsapp').value.trim();
 
@@ -163,6 +179,7 @@ async function handleFormSubmit(event) {
             description,
             category,
             price_usd: price,
+            status,
             logo_url: logoUrl,
             whatsapp_custom_text: whatsappText
         };

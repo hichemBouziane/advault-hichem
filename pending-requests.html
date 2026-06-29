@@ -55,6 +55,10 @@
                 class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer">
                 💳 طلبات شحن الرصيد
             </button>
+            <button onclick="switchTab('services')" id="tab-services-btn"
+                class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer">
+                🛍️ طلبات الخدمات
+            </button>
         </div>
 
         <!-- بطاقة العرض الرئيسي -->
@@ -118,6 +122,37 @@
                         <tbody id="pending-deposits-table" class="divide-y divide-gray-100">
                             <tr>
                                 <td colspan="6" class="p-8 text-center text-gray-400 font-bold">جاري تحميل الطلبات...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- قسم طلبات الخدمات -->
+            <div id="services-section" class="hidden">
+                <div class="px-6 py-5 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-bold text-gray-800">طلبات الخدمات المعلقة</h2>
+                        <p class="text-xs text-gray-400 mt-0.5">يرجى تأكيد تقديم الخدمة للزبون وخصم قيمتها من رصيده.</p>
+                    </div>
+                    <span id="services-count-badge" class="bg-purple-600 text-white text-xs font-black px-2.5 py-1 rounded-full">0 طلبات</span>
+                </div>
+
+                <!-- جدول طلبات الخدمات -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                            <tr>
+                                <th class="p-4 font-bold">اسم الزبون</th>
+                                <th class="p-4 font-bold">الخدمة المطلوبة</th>
+                                <th class="p-4 font-bold text-center">سعر الخدمة ($)</th>
+                                <th class="p-4 font-bold text-center">تاريخ الطلب</th>
+                                <th class="p-4 font-bold text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-services-table" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-gray-400 font-bold">جاري تحميل الطلبات...</td>
                             </tr>
                         </tbody>
                     </table>

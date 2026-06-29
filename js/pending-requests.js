@@ -236,29 +236,41 @@ function switchTab(tab) {
     activeTab = tab;
     const regBtn = document.getElementById('tab-registrations-btn');
     const depBtn = document.getElementById('tab-deposits-btn');
+    const srvBtn = document.getElementById('tab-services-btn');
     const regSec = document.getElementById('registrations-section');
     const depSec = document.getElementById('deposits-section');
+    const srvSec = document.getElementById('services-section');
+    
+    // إعادة تعيين أزرار التبويبات
+    [regBtn, depBtn, srvBtn].forEach(btn => {
+        if (btn) btn.className = "px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer";
+    });
+    // إخفاء جميع الأقسام
+    [regSec, depSec, srvSec].forEach(sec => {
+        if (sec) {
+            sec.classList.remove('block');
+            sec.classList.add('hidden');
+        }
+    });
     
     if (tab === 'registrations') {
         regBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer";
-        depBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer";
         regSec.classList.remove('hidden');
         regSec.classList.add('block');
-        depSec.classList.remove('block');
-        depSec.classList.add('hidden');
         loadPendingRequests();
-    } else {
+    } else if (tab === 'deposits') {
         depBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer";
-        regBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer";
         depSec.classList.remove('hidden');
         depSec.classList.add('block');
-        regSec.classList.remove('block');
-        regSec.classList.add('hidden');
         loadPendingDeposits();
+    } else if (tab === 'services') {
+        srvBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer";
+        srvSec.classList.remove('hidden');
+        srvSec.classList.add('block');
+        loadPendingServices();
     }
 }
 
-// ربط الدوال بالـ window للتأكد من إتاحتها للقوالب المكتوبة
 window.switchTab = switchTab;
 
 async function loadPendingDeposits() {
@@ -450,3 +462,159 @@ async function rejectDeposit(id) {
 
 window.approveDeposit = approveDeposit;
 window.rejectDeposit = rejectDeposit;
+
+async function loadPendingServices() {
+    const tableBody = document.getElementById('pending-services-table');
+    const badge = document.getElementById('services-count-badge');
+    
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="5" class="p-8 text-center text-gray-400 font-bold">جاري تحميل الطلبات...</td>
+        </tr>
+    `;
+    
+    try {
+        const { data: requests, error } = await _supabase
+            .from('service_requests')
+            .select('*')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+            
+        if (error) throw error;
+        
+        badge.innerText = `${requests.length} طلبات`;
+        
+        if (requests.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="p-8 text-center text-gray-400 font-bold">🎉 لا توجد أي طلبات خدمات معلقة حالياً.</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tableBody.innerHTML = '';
+        requests.forEach(req => {
+            const date = new Date(req.created_at);
+            const formattedDate = date.toLocaleDateString('ar-DZ', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-slate-50/50 transition';
+            row.innerHTML = `
+                <td class="p-4 font-bold text-gray-800">${req.client_name}</td>
+                <td class="p-4 font-bold text-indigo-700">${req.service_title}</td>
+                <td class="p-4 font-mono font-bold text-center text-purple-700">${req.price_usd === 0 ? 'مجاناً' : `$${parseFloat(req.price_usd).toFixed(2)}`}</td>
+                <td class="p-4 text-xs text-gray-400 font-semibold text-center">${formattedDate}</td>
+                <td class="p-4 flex justify-center gap-2 flex-wrap">
+                    <button onclick="approveService('${req.id}', '${req.client_id}', '${req.client_name}', '${req.service_title}', ${req.price_usd})" 
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3.5 rounded-xl flex items-center gap-1 shadow-md shadow-green-600/10 cursor-pointer transition">
+                        ✅ قبول وتفعيل
+                    </button>
+                    <button onclick="rejectService('${req.id}', '${req.client_name}', '${req.service_title}')" 
+                        class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold py-2 px-3 rounded-xl flex items-center cursor-pointer transition">
+                        ❌ رفض
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    } catch (err) {
+        console.error("Error loading pending services:", err);
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="p-8 text-center text-red-500 font-bold">حدث خطأ أثناء تحميل البيانات من الخادم.</td>
+            </tr>
+        `;
+    }
+}
+
+window.loadPendingServices = loadPendingServices;
+
+async function approveService(id, clientId, clientName, serviceTitle, priceUsd) {
+    const confirmApprove = confirm(`هل أنت متأكد من قبول طلب خدمة (${serviceTitle}) للزبون (${clientName})؟ سيتم خصم $${priceUsd} من رصيده.`);
+    if (!confirmApprove) return;
+    
+    try {
+        // 1. جلب بيانات الزبون وسعر صرفه لخصم المقدار بالدينار بشكل صحيح
+        const { data: client, error: clErr } = await _supabase
+            .from('clients')
+            .select('*')
+            .eq('id', clientId)
+            .single();
+            
+        if (clErr) throw clErr;
+        
+        // 2. تحديث حالة الطلب إلى approved
+        const { error: reqErr } = await _supabase
+            .from('service_requests')
+            .update({ status: 'approved', processed_at: new Date().toISOString() })
+            .eq('id', id);
+            
+        if (reqErr) throw reqErr;
+        
+        // 3. خصم القيمة بإدخال قيمة سالبة في جدول payments
+        if (priceUsd > 0) {
+            const rate = client.exchange_rate || 230;
+            const amountDzd = Math.round(priceUsd * rate);
+            
+            const { error: payErr } = await _supabase
+                .from('payments')
+                .insert([{
+                    client_id: clientId,
+                    amount_dzd: -amountDzd, // خصم بالدينار
+                    amount_euro: -priceUsd, // خصم بالدولار
+                    note: `خصم مقابل خدمة: ${serviceTitle}`,
+                    date: new Date().toISOString().split('T')[0]
+                }]);
+                
+            if (payErr) throw payErr;
+        }
+        
+        showToast(`تم تفعيل الخدمة (${serviceTitle}) وخصم القيمة بنجاح!`, "success");
+        loadPendingServices();
+        
+        // 4. فتح الواتساب تلقائياً لتنبيه الزبون
+        if (client.phone) {
+            const cleanPhone = client.phone.replace(/\s+/g, '');
+            const msg = `مرحباً ${clientName}، يسعدني إعلامك بأنه تم قبول وتفعيل طلبك للحصول على خدمة (${serviceTitle}) بنجاح. ${priceUsd > 0 ? `تم خصم بقيمة $${priceUsd} من رصيدك في المنصة.` : ''}`;
+            const encoded = encodeURIComponent(msg);
+            const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encoded}`;
+            window.open(whatsappUrl, '_blank');
+        }
+        
+    } catch (err) {
+        console.error("Error approving service:", err);
+        showToast("حدث خطأ أثناء معالجة الطلب وخصم القيمة", "error");
+    }
+}
+
+window.approveService = approveService;
+
+async function rejectService(id, clientName, serviceTitle) {
+    const confirmReject = confirm(`هل أنت متأكد من رفض طلب خدمة (${serviceTitle}) للزبون (${clientName})؟`);
+    if (!confirmReject) return;
+    
+    try {
+        const { error } = await _supabase
+            .from('service_requests')
+            .update({ status: 'rejected', processed_at: new Date().toISOString() })
+            .eq('id', id);
+            
+        if (error) throw error;
+        
+        showToast(`تم رفض طلب الخدمة بنجاح.`, "success");
+        loadPendingServices();
+        
+    } catch (err) {
+        console.error("Error rejecting service request:", err);
+        showToast("حدث خطأ أثناء رفض الطلب", "error");
+    }
+}
+
+window.rejectService = rejectService;

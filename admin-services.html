@@ -66,6 +66,7 @@
                             <th class="p-4 font-bold">عنوان الخدمة</th>
                             <th class="p-4 font-bold">الوصف</th>
                             <th class="p-4 font-bold">القسم</th>
+                            <th class="p-4 font-bold text-center">الحالة</th>
                             <th class="p-4 font-bold text-center">السعر بالدولار</th>
                             <th class="p-4 font-bold text-center">الإجراءات</th>
                         </tr>
@@ -122,8 +123,19 @@
                         <label class="block text-xs font-bold text-gray-600 mb-1">السعر بالدولار ($)</label>
                         <input type="number" id="service-price" min="0" step="any" value="0" required
                             class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition text-sm">
-                        <p class="text-[9px] text-gray-400 mt-1 font-semibold">* اكتب 0 لتظهر الخدمة مجانية للزبون.</p>
                     </div>
+                </div>
+
+                <!-- Status Selection -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">حالة الخدمة المعروضة</label>
+                    <select id="service-status" required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition text-sm font-bold text-gray-700">
+                        <option value="متوفر" selected class="text-emerald-600 font-bold">متوفر (نشط للطلب)</option>
+                        <option value="غير متوفر" class="text-red-500 font-bold">غير متوفر</option>
+                        <option value="قريباً" class="text-blue-500 font-bold">قريباً</option>
+                        <option value="انتهت الاشتراكات" class="text-amber-500 font-bold">انتهت الاشتراكات</option>
+                    </select>
                 </div>
 
                 <!-- Logo / Icon selection -->
