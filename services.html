@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوابة الخدمات — AdVault</title>
+    <!-- Tailwind CSS v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/admin.css">
+    
+    <script>
+        // التحقق المبكر من الصلاحية قبل تحميل الصفحة
+        (function () {
+            const _u = JSON.parse(localStorage.getItem('currentUser'));
+            if (!_u || _u.role !== 'client') { window.location.href = 'index.html'; }
+        })();
+    </script>
+</head>
+
+<body class="bg-slate-50 text-gray-800 min-h-screen flex flex-col font-sans">
+
+    <!-- الهيدر -->
+    <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl">🛒</span>
+            <div>
+                <h1 class="text-lg font-bold text-gray-800">بوابة الخدمات والحلول</h1>
+                <span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-bold">تسوق أدوات وحلول إعلانية</span>
+            </div>
+        </div>
+        <a href="client.html" class="bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1 text-decoration-none">
+            🔙 لوحة التحكم
+        </a>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="p-6 flex-1 space-y-6 max-w-5xl mx-auto w-full">
+
+        <!-- الفئات / التصنيفات -->
+        <div class="flex gap-2 border-b border-gray-250 pb-px overflow-x-auto select-none" id="categories-container">
+            <button onclick="filterCategory('الكل')" id="cat-all"
+                class="px-5 py-3 text-xs font-bold border-b-2 border-purple-600 text-purple-600 transition cursor-pointer whitespace-nowrap">
+                🌍 الكل
+            </button>
+            <!-- سيتم إضافة الفئات ديناميكياً -->
+        </div>
+
+        <!-- شبكة الخدمات -->
+        <div id="services-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+            <!-- جاري تحميل الخدمات -->
+            <div class="col-span-full py-12 text-center text-gray-400 font-bold">
+                ⏳ جاري تحميل الخدمات المتاحة...
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast Notifications -->
+    <div id="toast-notification" class="fixed top-5 right-5 z-50 flex items-center gap-3 bg-white shadow-2xl rounded-2xl p-4 border-r-4 border-emerald-500 max-w-xs transform translate-x-80 opacity-0 transition-all duration-300 ease-out text-right hidden">
+        <div class="text-2xl" id="toast-icon">✅</div>
+        <div class="flex-1">
+            <h4 class="font-bold text-xs text-gray-800" id="toast-title">تمت العملية بنجاح</h4>
+            <p class="text-[10px] text-gray-500 mt-0.5 leading-normal" id="toast-msg-body">—</p>
+        </div>
+    </div>
+
+    <!-- JS Scripts -->
+    <script src="js/services.js"></script>
+</body>
+
+</html>

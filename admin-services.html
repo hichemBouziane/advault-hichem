@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الخدمات — AdVault</title>
+    <!-- Tailwind CSS v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/admin.css">
+    
+    <script>
+        // التحقق المبكر من الصلاحية قبل تحميل الصفحة
+        (function () {
+            const _u = JSON.parse(localStorage.getItem('currentUser'));
+            if (!_u || _u.role !== 'admin') { window.location.href = 'index.html'; }
+        })();
+    </script>
+</head>
+
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans">
+
+    <!-- الهيدر -->
+    <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center gap-4 flex-wrap">
+        <div class="flex items-center gap-3">
+            <a href="admin.html" class="p-2 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl shadow-md inline-block">
+                <img src="icons/icon-192.png" alt="AdVault Logo" class="w-6 h-6 object-contain">
+            </a>
+            <div>
+                <h1 class="text-lg font-bold text-gray-800">إدارة الخدمات والمعروضات</h1>
+                <span class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-bold">بوابة التحكم في الخدمات</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="openAddModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1">
+                ➕ إضافة خدمة جديدة
+            </button>
+            <a href="admin.html" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 text-decoration-none">
+                لوحة التحكم الرئيسية 🔙
+            </a>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="p-6 flex-1 space-y-6 max-w-6xl mx-auto w-full">
+
+        <!-- بطاقة العرض الرئيسية للخدمات -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-bold text-gray-800">قائمة الخدمات المتاحة للزبائن</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">يمكنك إضافة، تعديل، أو حذف الخدمات التي تظهر للزبائن في لوحاتهم.</p>
+                </div>
+                <span id="services-count-badge" class="bg-indigo-600 text-white text-xs font-black px-2.5 py-1 rounded-full">0 خدمات</span>
+            </div>
+
+            <!-- جدول الخدمات -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-right text-sm">
+                    <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                        <tr>
+                            <th class="p-4 font-bold">الشعار / الأيقونة</th>
+                            <th class="p-4 font-bold">عنوان الخدمة</th>
+                            <th class="p-4 font-bold">الوصف</th>
+                            <th class="p-4 font-bold">القسم</th>
+                            <th class="p-4 font-bold text-center">السعر بالدولار</th>
+                            <th class="p-4 font-bold text-center">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="services-table-body" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="6" class="p-8 text-center text-gray-400 font-bold">جاري تحميل الخدمات...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ===== نافذة إضافة/تعديل خدمة جديدة (Service Form Modal) ===== -->
+    <div id="service-modal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden text-right animate-scaleUp">
+            <div class="bg-gradient-to-br from-indigo-600 to-purple-700 p-5 text-white flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🛒</span>
+                    <h3 class="font-bold text-base" id="modal-title">إضافة خدمة جديدة</h3>
+                </div>
+                <button onclick="closeServiceModal()" class="text-white/80 hover:text-white text-2xl font-bold cursor-pointer leading-none">&times;</button>
+            </div>
+            
+            <form id="service-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                <!-- Hidden Service ID for Edit mode -->
+                <input type="hidden" id="service-id">
+
+                <!-- Title -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">عنوان الخدمة</label>
+                    <input type="text" id="service-title" required placeholder="مثال: فريق صناعة الفيديو الترويجي"
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition text-sm">
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">وصف الخدمة</label>
+                    <textarea id="service-description" required placeholder="اكتب تفاصيل الخدمة وخصائصها التي ستظهر للزبائن..." rows="3"
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition text-sm"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Category -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">القسم / التصنيف</label>
+                        <input type="text" id="service-category" required placeholder="مثال: أدوات، تصميم، أخرى"
+                            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition text-sm">
+                    </div>
+                    <!-- Price USD -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">السعر بالدولار ($)</label>
+                        <input type="number" id="service-price" min="0" step="any" value="0" required
+                            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition text-sm">
+                        <p class="text-[9px] text-gray-400 mt-1 font-semibold">* اكتب 0 لتظهر الخدمة مجانية للزبون.</p>
+                    </div>
+                </div>
+
+                <!-- Logo / Icon selection -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">أيقونة الخدمة أو رابط الشعار</label>
+                    
+                    <!-- Predefined emoji select buttons -->
+                    <div class="flex flex-wrap gap-2 mb-2 p-3 bg-slate-50 border border-slate-100 rounded-xl justify-center">
+                        <button type="button" onclick="selectEmoji('🔑')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">🔑</button>
+                        <button type="button" onclick="selectEmoji('🎨')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">🎨</button>
+                        <button type="button" onclick="selectEmoji('🎥')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">🎥</button>
+                        <button type="button" onclick="selectEmoji('💻')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">💻</button>
+                        <button type="button" onclick="selectEmoji('🚀')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">🚀</button>
+                        <button type="button" onclick="selectEmoji('📈')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">📈</button>
+                        <button type="button" onclick="selectEmoji('💬')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">💬</button>
+                        <button type="button" onclick="selectEmoji('📦')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">📦</button>
+                        <button type="button" onclick="selectEmoji('👤')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">👤</button>
+                        <button type="button" onclick="selectEmoji('🛡️')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">🛡️</button>
+                        <button type="button" onclick="selectEmoji('🌐')" class="text-xl p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 transition cursor-pointer select-none">🌐</button>
+                    </div>
+
+                    <input type="text" id="service-logo" placeholder="اضغط على أيقونة بالأعلى أو ضع رابط الصورة الخاص بك هنا"
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition text-sm">
+                </div>
+
+                <!-- WhatsApp Order message text -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">الرسالة المجهزة للواتساب (WhatsApp Template)</label>
+                    <textarea id="service-whatsapp" rows="2.5" placeholder="مثال: مرحباً أود طلب خدمة شراء مفتاح أداة تصميم."
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition text-sm"></textarea>
+                    <p class="text-[9px] text-gray-400 mt-1 font-semibold">ستفتح هذه الرسالة في واتساب الزبون للتواصل معك فورا دون أن يضطر للكتابة.</p>
+                </div>
+
+                <!-- Actions -->
+                <div class="pt-4 flex gap-3">
+                    <button type="submit" id="submit-btn"
+                        class="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 rounded-xl transition cursor-pointer text-center text-sm shadow-md">
+                        حفظ الخدمة والتثبيت
+                    </button>
+                    <button type="button" onclick="closeServiceModal()"
+                        class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 px-5 rounded-xl transition cursor-pointer text-center text-sm">
+                        إلغلاق
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-notification" class="fixed top-5 right-5 z-50 flex items-center gap-3 bg-white shadow-2xl rounded-2xl p-4 border-r-4 border-emerald-500 max-w-xs transform translate-x-80 opacity-0 transition-all duration-300 ease-out text-right hidden">
+        <div class="text-2xl" id="toast-icon">✅</div>
+        <div class="flex-1">
+            <h4 class="font-bold text-xs text-gray-800" id="toast-title">تمت العملية بنجاح</h4>
+            <p class="text-[10px] text-gray-500 mt-0.5 leading-normal" id="toast-msg-body">—</p>
+        </div>
+    </div>
+
+    <!-- JS Scripts -->
+    <script src="js/admin-services.js"></script>
+</body>
+
+</html>
