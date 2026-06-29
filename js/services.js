@@ -7,7 +7,10 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const user = JSON.parse(localStorage.getItem('currentUser'));
 if (!user || user.role !== 'client') {
-    window.location.href // متغيرات عامة لحفظ الحالة
+    window.location.href = 'index.html';
+}
+
+// متغيرات عامة لحفظ الحالة
 let allServices = [];
 let selectedCategory = 'الكل';
 let clientBalanceUsd = 0;
