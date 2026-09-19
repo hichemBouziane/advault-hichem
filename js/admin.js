@@ -367,6 +367,7 @@ async function loadAdminData() {
             ...client,
             facebookSpendWithProfit,
             totalPaidEuro,
+            remainingEuro,
             finalDebtDzd,
             remainingUsdText,
             remainingUsdClass,
@@ -393,6 +394,23 @@ async function loadAdminData() {
         clientSpendNames.push(client.name || client.phone);
         clientSpendValues.push(parseFloat(client.facebookSpendWithProfit.toFixed(2)));
 
+        let transferActionBtn = '<span class="text-gray-300 text-xs font-bold text-center block">-</span>';
+        if (client.remainingEuro > 0.009) {
+            transferActionBtn = `
+                <button onclick="openTransferModal('${client.id}', 'debt')"
+                    class="bg-red-50 hover:bg-red-100 text-red-650 border border-red-200/80 text-[11px] font-black px-2.5 py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-xs whitespace-nowrap mx-auto">
+                    <span>🔄</span> نقل الدين
+                </button>
+            `;
+        } else if (client.remainingEuro < -0.009) {
+            transferActionBtn = `
+                <button onclick="openTransferModal('${client.id}', 'surplus')"
+                    class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 text-[11px] font-black px-2.5 py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-xs whitespace-nowrap mx-auto">
+                    <span>💸</span> نقل الزيادة
+                </button>
+            `;
+        }
+
         adminTable.innerHTML += `
             <tr class="hover:bg-gray-50 border-b border-gray-100">
                 <td class="p-3 font-medium">
@@ -408,11 +426,303 @@ async function loadAdminData() {
                 <td class="p-3 font-bold ${client.finalDebtDzd > 0 ? 'text-red-500' : 'text-gray-700'}">${client.finalDebtDzd.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} دج</td>
                 <td class="p-3 ${client.remainingUsdClass}">${client.remainingUsdText}</td>
                 <td class="p-3 font-semibold text-purple-600">${client.remainingDaysText}</td>
+                <td class="p-3 text-center">${transferActionBtn}</td>
             </tr>`;
     }
 
     await updateAdminCharts(clientSpendNames, clientSpendValues);
 }
+
+// ==========================================
+//  إدارة نقل الديون والأرصدة الزائدة بين الزبائن
+// ==========================================
+let currentTransferSourceClient = null;
+
+function openTransferModal(clientId, type) {
+    const clients = window.allClients || [];
+    const source = clients.find(c => c.id === clientId);
+    if (!source) {
+        showToast("تعذر العثور على بيانات الزبون المحدد.", "error");
+        return;
+    }
+
+    currentTransferSourceClient = source;
+    const modal = document.getElementById('transfer-balance-modal');
+    const header = document.getElementById('transfer-modal-header');
+    const title = document.getElementById('transfer-modal-title');
+    const icon = document.getElementById('transfer-modal-icon');
+    const confirmBtn = document.getElementById('transfer-confirm-btn');
+
+    document.getElementById('transfer-source-id').value = source.id;
+    document.getElementById('transfer-type').value = type;
+    document.getElementById('transfer-source-name').innerText = source.name || source.phone || 'الزبون المحدد';
+
+    const remainingEuro = parseFloat(source.remainingEuro || 0);
+    const exchangeRate = parseFloat(source.exchange_rate || 240);
+    const absUsd = Math.abs(remainingEuro);
+    const absDzd = Math.round(absUsd * exchangeRate);
+
+    document.getElementById('transfer-max-amount-usd').value = absUsd.toFixed(2);
+
+    if (type === 'debt') {
+        header.className = "p-5 text-white flex justify-between items-center bg-gradient-to-r from-red-600 to-rose-700";
+        confirmBtn.className = "flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black py-3 rounded-xl text-xs transition cursor-pointer shadow-lg shadow-red-600/20";
+        title.innerText = `نقل ديون الشركة (${source.name})`;
+        icon.innerText = "🔄";
+        document.getElementById('transfer-source-status-label').innerText = "إجمالي الدين المتبقي على الشركة:";
+        document.getElementById('transfer-source-total-amount').innerText = `$ ${absUsd.toFixed(2)} (${absDzd.toLocaleString('fr-FR')} دج)`;
+        document.getElementById('transfer-source-total-amount').className = "font-black text-red-600 text-sm";
+    } else {
+        header.className = "p-5 text-white flex justify-between items-center bg-gradient-to-r from-emerald-600 to-teal-700";
+        confirmBtn.className = "flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-3 rounded-xl text-xs transition cursor-pointer shadow-lg shadow-emerald-600/20";
+        title.innerText = `نقل الفائض / الرصيد الزائد (${source.name})`;
+        icon.innerText = "💸";
+        document.getElementById('transfer-source-status-label').innerText = "إجمالي الفائض / الرصيد الزائد المتاح:";
+        document.getElementById('transfer-source-total-amount').innerText = `$ ${absUsd.toFixed(2)} (${absDzd.toLocaleString('fr-FR')} دج)`;
+        document.getElementById('transfer-source-total-amount').className = "font-black text-emerald-600 text-sm";
+    }
+
+    // ملء قائمة الزبائن المستلمين (باستثناء الزبون المصدر)
+    const targetSelect = document.getElementById('transfer-target-client-select');
+    targetSelect.innerHTML = '<option value="">-- اختر الشركة / الزبون المستلم --</option>';
+    
+    clients.forEach(c => {
+        if (c.id !== source.id && c.role === 'client') {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.innerText = `${c.name || c.phone} (سعر الصرف: ${c.exchange_rate || 240} دج)`;
+            targetSelect.appendChild(opt);
+        }
+    });
+
+    // إعادة ضبط الأوضاع
+    document.getElementById('transfer-mode-full').checked = true;
+    toggleTransferAmountMode('full');
+
+    document.getElementById('transfer-exchange-rate-hint').innerText = `* سعر صرف المصدر: 1$ = ${exchangeRate} دج`;
+
+    modal.classList.remove('hidden');
+    updateTransferPreview();
+}
+
+function closeTransferModal() {
+    document.getElementById('transfer-balance-modal').classList.add('hidden');
+    currentTransferSourceClient = null;
+}
+
+function toggleTransferAmountMode(mode) {
+    const container = document.getElementById('transfer-custom-amount-container');
+    const fullLabel = document.getElementById('mode-full-label');
+    const partialLabel = document.getElementById('mode-partial-label');
+    const maxUsd = parseFloat(document.getElementById('transfer-max-amount-usd').value || 0);
+    const sourceRate = parseFloat(currentTransferSourceClient?.exchange_rate || 240);
+
+    if (mode === 'full') {
+        container.classList.add('hidden');
+        fullLabel.className = "flex items-center gap-2 p-3 bg-indigo-50/70 border-2 border-indigo-500 rounded-xl cursor-pointer";
+        partialLabel.className = "flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100";
+        document.getElementById('transfer-amount-usd-input').value = maxUsd.toFixed(2);
+        document.getElementById('transfer-amount-dzd-input').value = Math.round(maxUsd * sourceRate);
+    } else {
+        container.classList.remove('hidden');
+        partialLabel.className = "flex items-center gap-2 p-3 bg-purple-50/70 border-2 border-purple-500 rounded-xl cursor-pointer";
+        fullLabel.className = "flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100";
+        document.getElementById('transfer-amount-usd-input').value = (maxUsd / 2).toFixed(2);
+        document.getElementById('transfer-amount-dzd-input').value = Math.round((maxUsd / 2) * sourceRate);
+    }
+    updateTransferPreview();
+}
+
+function handleTransferUsdChange() {
+    const usd = parseFloat(document.getElementById('transfer-amount-usd-input').value || 0);
+    const sourceRate = parseFloat(currentTransferSourceClient?.exchange_rate || 240);
+    document.getElementById('transfer-amount-dzd-input').value = Math.round(usd * sourceRate);
+    updateTransferPreview();
+}
+
+function handleTransferDzdChange() {
+    const dzd = parseFloat(document.getElementById('transfer-amount-dzd-input').value || 0);
+    const sourceRate = parseFloat(currentTransferSourceClient?.exchange_rate || 240);
+    if (sourceRate > 0) {
+        document.getElementById('transfer-amount-usd-input').value = (dzd / sourceRate).toFixed(2);
+    }
+    updateTransferPreview();
+}
+
+function updateTransferPreview() {
+    const source = currentTransferSourceClient;
+    if (!source) return;
+
+    const type = document.getElementById('transfer-type').value;
+    const targetId = document.getElementById('transfer-target-client-select').value;
+    const clients = window.allClients || [];
+    const target = clients.find(c => c.id === targetId);
+
+    const isFull = document.getElementById('transfer-mode-full').checked;
+    const maxUsd = parseFloat(document.getElementById('transfer-max-amount-usd').value || 0);
+    const sourceRate = parseFloat(source.exchange_rate || 240);
+
+    let transferUsd = isFull ? maxUsd : parseFloat(document.getElementById('transfer-amount-usd-input').value || 0);
+    let transferDzd = Math.round(transferUsd * sourceRate);
+
+    const sourcePreview = document.getElementById('transfer-preview-source-text');
+    const targetPreview = document.getElementById('transfer-preview-target-text');
+
+    const targetName = target ? (target.name || target.phone) : 'الطرف المستلم';
+
+    if (type === 'debt') {
+        sourcePreview.innerHTML = `• <strong class="text-indigo-900">${source.name}</strong>: سيتم تسجيل دفعة تسوية بقيمة <span class="text-emerald-600 font-bold">+${transferUsd.toFixed(2)}$ (${transferDzd.toLocaleString('fr-FR')} دج)</span> لإلغاء وتصفية الدين بملاحظة: <em class="text-gray-600">"تصفية دين ونقله إلى حساب (${targetName})"</em>.`;
+        targetPreview.innerHTML = `• <strong class="text-indigo-900">${targetName}</strong>: سيتم تسجيل دفعة سالبة بقيمة <span class="text-red-600 font-bold">-${transferUsd.toFixed(2)}$ (-${transferDzd.toLocaleString('fr-FR')} دج)</span> لتحمل وزيادة الدين عليه بملاحظة: <em class="text-gray-600">"تحمل دين منقول من حساب (${source.name})"</em>.`;
+    } else {
+        sourcePreview.innerHTML = `• <strong class="text-indigo-900">${source.name}</strong>: سيتم خصم الفائض بقيمة <span class="text-red-600 font-bold">-${transferUsd.toFixed(2)}$ (-${transferDzd.toLocaleString('fr-FR')} دج)</span> بملاحظة: <em class="text-gray-600">"تحويل رصيد زائد إلى حساب (${targetName})"</em>.`;
+        targetPreview.innerHTML = `• <strong class="text-indigo-900">${targetName}</strong>: سيتم إضافة الرصيد بقيمة <span class="text-emerald-600 font-bold">+${transferUsd.toFixed(2)}$ (${transferDzd.toLocaleString('fr-FR')} دج)</span> بملاحظة: <em class="text-gray-600">"استلام رصيد زائد منقول من حساب (${source.name})"</em>.`;
+    }
+}
+
+async function handleBalanceTransferSubmit(event) {
+    event.preventDefault();
+    const source = currentTransferSourceClient;
+    if (!source) return;
+
+    const type = document.getElementById('transfer-type').value;
+    const targetId = document.getElementById('transfer-target-client-select').value;
+    if (!targetId) {
+        showToast("يرجى اختيار الشركة أو الزبون المستلم للتحويل.", "error");
+        return;
+    }
+
+    const clients = window.allClients || [];
+    const target = clients.find(c => c.id === targetId);
+    if (!target) {
+        showToast("تعذر العثور على بيانات الزبون المستلم.", "error");
+        return;
+    }
+
+    const isFull = document.getElementById('transfer-mode-full').checked;
+    const maxUsd = parseFloat(document.getElementById('transfer-max-amount-usd').value || 0);
+    const sourceRate = parseFloat(source.exchange_rate || 240);
+
+    let transferUsd = isFull ? maxUsd : parseFloat(document.getElementById('transfer-amount-usd-input').value || 0);
+
+    if (isNaN(transferUsd) || transferUsd <= 0) {
+        showToast("يرجى إدخال مبلغ تحويل صحيح أكبر من الصفر.", "error");
+        return;
+    }
+
+    if (transferUsd > maxUsd + 0.001) {
+        showToast(`المبلغ المدخل ($${transferUsd.toFixed(2)}) يتجاوز إجمالي المبلغ المتاح للتحويل ($${maxUsd.toFixed(2)}).`, "error");
+        return;
+    }
+
+    const transferDzd = Math.round(transferUsd * sourceRate);
+    const targetName = target.name || target.phone;
+    const sourceName = source.name || source.phone;
+    const today = new Date().toISOString().split('T')[0];
+
+    const confirmBtn = document.getElementById('transfer-confirm-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerText = "⏳ جاري تنفيذ التحويل وتثبيت القيود...";
+
+    try {
+        let sourceAmountEuro, sourceAmountDzd, sourceNote;
+        let targetAmountEuro, targetAmountDzd, targetNote;
+
+        if (type === 'debt') {
+            // المصدر يسجل دفعة موجبة لتصفية دينه
+            sourceAmountEuro = transferUsd;
+            sourceAmountDzd = transferDzd;
+            sourceNote = `تصفية دين ونقله إلى حساب (${targetName})`;
+
+            // المستلم يسجل دفعة سالبة ليتحمل الدين
+            targetAmountEuro = -transferUsd;
+            targetAmountDzd = -transferDzd;
+            targetNote = `تحمل دين منقول من حساب (${sourceName})`;
+        } else {
+            // المصدر يخصم منه الفائض (سالب)
+            sourceAmountEuro = -transferUsd;
+            sourceAmountDzd = -transferDzd;
+            sourceNote = `تحويل رصيد زائد إلى حساب (${targetName})`;
+
+            // المستلم يضاف له الرصيد (موجب)
+            targetAmountEuro = transferUsd;
+            targetAmountDzd = transferDzd;
+            targetNote = `استلام رصيد زائد منقول من حساب (${sourceName})`;
+        }
+
+        // 1. إدراج حركة المصدر في payments
+        const { data: sourcePayment, error: sourceErr } = await _supabase
+            .from('payments')
+            .insert([{
+                client_id: source.id,
+                amount_euro: sourceAmountEuro,
+                amount_dzd: sourceAmountDzd,
+                date: today,
+                note: sourceNote
+            }])
+            .select()
+            .single();
+
+        if (sourceErr) throw sourceErr;
+
+        // 2. إدراج حركة المستلم في payments
+        const { data: targetPayment, error: targetErr } = await _supabase
+            .from('payments')
+            .insert([{
+                client_id: target.id,
+                amount_euro: targetAmountEuro,
+                amount_dzd: targetAmountDzd,
+                date: today,
+                note: targetNote
+            }])
+            .select()
+            .single();
+
+        if (targetErr) throw targetErr;
+
+        // 3. أرشفة الحركات في profits_archive كحركات رأس مال محايدة (بدون أرباح إضافية)
+        await _supabase.from('profits_archive').insert([
+            {
+                payment_id: sourcePayment.id,
+                client_name: sourceName,
+                amount_received: sourceAmountDzd,
+                ad_capital: sourceAmountDzd,
+                total_profit: 0,
+                company_profit: 0,
+                my_profit: 0
+            },
+            {
+                payment_id: targetPayment.id,
+                client_name: targetName,
+                amount_received: targetAmountDzd,
+                ad_capital: targetAmountDzd,
+                total_profit: 0,
+                company_profit: 0,
+                my_profit: 0
+            }
+        ]);
+
+        closeTransferModal();
+        showToast(`تم تنفيذ التحويل بنجاح بين (${sourceName}) و (${targetName})!`, "success");
+
+        // إعادة تحميل البيانات
+        await loadAdminData();
+
+    } catch (err) {
+        console.error("Error executing balance transfer:", err);
+        showToast("حدث خطأ أثناء تنفيذ التحويل. يرجى المحاولة لاحقاً.", "error");
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = "🚀 تأكيد وتنفيذ التحويل";
+    }
+}
+
+window.openTransferModal = openTransferModal;
+window.closeTransferModal = closeTransferModal;
+window.toggleTransferAmountMode = toggleTransferAmountMode;
+window.handleTransferUsdChange = handleTransferUsdChange;
+window.handleTransferDzdChange = handleTransferDzdChange;
+window.updateTransferPreview = updateTransferPreview;
+window.handleBalanceTransferSubmit = handleBalanceTransferSubmit;
 
 
 
