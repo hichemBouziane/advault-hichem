@@ -7,6 +7,8 @@
     <title>لوحة تحكم المدير</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="css/admin.css">
     <script>
         // التحقق المبكر من الصلاحية قبل تحميل الصفحة
@@ -17,10 +19,13 @@
     </script>
 </head>
 
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans">
 
-    <!-- الهيدر -->
-    <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center gap-4 flex-wrap">
+    <!-- الحاوية الرئيسية (تُزيح لليسار في الحاسوب لترك مساحة للقائمة الجانبية الثابتة على اليمين) -->
+    <div class="flex-1 md:mr-64 flex flex-col min-h-screen">
+
+        <!-- الهيدر -->
+        <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center gap-4 flex-wrap sticky top-0 z-20">
         <div>
             <h1 class="text-xl font-bold text-gray-800" id="user-welcome">لوحة تحكم المدير</h1>
             <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-md font-semibold">مدير النظام</span>
@@ -47,8 +52,8 @@
                 <span id="pending-badge" class="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center hidden">0</span>
             </button>
 
-            <!-- زر القائمة الجانبية -->
-            <button onclick="openMenu()" class="text-gray-600 hover:text-indigo-600 transition cursor-pointer p-2">
+            <!-- زر القائمة الجانبية (يظهر فقط في الهاتف) -->
+            <button onclick="openMenu()" class="md:hidden text-gray-600 hover:text-indigo-600 transition cursor-pointer p-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
@@ -57,15 +62,16 @@
     </header>
 
     <main class="p-6 flex-1 space-y-6">
-        
-        <!-- أزرار الإجراءات السريعة -->
+        <!-- 1. قسم الرئيسية للوحة تحكم المدير -->
+        <div id="dashboard-view" class="space-y-6 block">
+            <!-- أزرار الإجراءات السريعة -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button onclick="openModal('client-modal')"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center">+
                 إضافة زبون جديد</button>
-            <button
-                class="bg-emerald-600 text-gray-200 p-4 rounded-xl font-bold shadow opacity-50 cursor-not-allowed text-center">قريباً
-                تسجيل إعلان</button>
+            <button onclick="openManageClientsModal()"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center transition">⚙️
+                تعديل أو حذف زبون</button>
             <button onclick="document.getElementById('payment-modal').classList.remove('hidden'); openPaymentModal();"
                 class="bg-amber-500 hover:bg-amber-600 text-white p-4 rounded-xl font-bold shadow cursor-pointer text-center transition">
                 💰 تسجيل دفعة جديدة
@@ -73,7 +79,7 @@
         </div>
 
         <!-- ===== البطاقات الإحصائية السريعة ===== -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
 
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                 <p class="text-xs font-bold text-gray-400 mb-1">💰 مجموع الدفعات هذا الشهر</p>
@@ -98,6 +104,16 @@
             <div class="bg-emerald-50 rounded-2xl shadow-sm border border-emerald-100 p-4 ring-1 ring-emerald-400/20">
                 <p class="text-xs font-bold text-emerald-600 mb-1">⭐ فائدتك هذا الشهر</p>
                 <p class="text-lg font-bold text-emerald-700" id="summary-my-month">0 دج</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <p class="text-xs font-bold text-rose-500 mb-1">💸 إجمالي المصاريف المسجلة</p>
+                <p class="text-lg font-bold text-rose-700" id="summary-total-expenses">0 دج</p>
+            </div>
+
+            <div class="bg-blue-50 rounded-2xl shadow-sm border border-blue-100 p-4 ring-1 ring-blue-400/20">
+                <p class="text-xs font-bold text-blue-600 mb-1">📉 صافي أرباح الشركة</p>
+                <p class="text-lg font-bold text-blue-700" id="summary-net-profit">0 دج</p>
             </div>
 
         </div>
@@ -175,9 +191,28 @@
             </div>
         </div>
 
+        <!-- ===== قسم الرسوم البيانية للأدمن ===== -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <!-- مخطط الأرباح والدفعات الشهرية -->
+            <div class="space-y-3">
+                <h4 class="text-sm font-bold text-gray-700 flex items-center gap-1 border-b border-gray-50 pb-2">📈 الأرباح والدفعات السنوية</h4>
+                <div class="relative h-64">
+                    <canvas id="monthlyProfitsChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- مخطط مقارنة صرف الزبائن -->
+            <div class="space-y-3">
+                <h4 class="text-sm font-bold text-gray-700 flex items-center gap-1 border-b border-gray-50 pb-2">📊 مقارنة استهلاك ميزانيات الزبائن (بالدولار)</h4>
+                <div class="relative h-64">
+                    <canvas id="clientSpendingChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- جدول الزبائن -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h3 class="text-lg font-bold mb-4 text-gray-700">التقرير الشامل للمستحقات (الجديد أولاً)</h3>
+            <h3 class="text-lg font-bold mb-4 text-gray-700">التقرير الشامل للمستحقات (الزبائن الأكثر نشاطاً أولاً)</h3>
             <div class="overflow-x-auto">
                 <table class="w-full text-right border-collapse">
                     <thead>
@@ -188,18 +223,747 @@
                             <th class="p-3 font-semibold">المدفوع يدوياً ($)</th>
                             <th class="p-3 font-semibold">سعر الصرف</th>
                             <th class="p-3 font-semibold">المستحق الحالي (دج)</th>
+                            <th class="p-3 font-semibold">المستحق الحالي ($)</th>
+                            <th class="p-3 font-semibold">الأيام المتبقية</th>
                         </tr>
                     </thead>
                     <tbody id="admin-clients-table" class="divide-y divide-gray-100 text-sm">
                         <tr>
-                            <td colspan="6" class="p-4 text-center text-gray-400">جاري جلب البيانات...</td>
+                            <td colspan="8" class="p-4 text-center text-gray-400">جاري جلب البيانات...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
+        </div> <!-- end of dashboard-view -->
+
+        <!-- 2. قسم الإعدادات المطور بنظام الكروت (الخصوصية وعرض الجداول) -->
+        <div id="settings-view" class="space-y-6 hidden">
+            <div class="bg-gradient-to-r from-indigo-700 to-purple-750 text-white rounded-3xl p-6 text-center shadow-lg relative overflow-hidden">
+                <div class="dots-pattern"></div>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-bold">⚙️ مركز الإعدادات والخصوصية</h3>
+                    <p class="text-xs text-indigo-100 mt-2">قم بإدارة إعدادات ظهور الجداول وتخصيص تجربة العملاء المفعّلين</p>
+                </div>
+            </div>
+
+            <!-- شبكة الكروت (المربعات) -->
+            <div id="settings-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                <!-- كارت 1: خصوصية المدفوعات -->
+                <button onclick="showSettingsDetail('payments')" class="bg-white hover:bg-indigo-50 border border-gray-100 p-6 rounded-3xl shadow-sm hover:shadow-md transition text-right flex flex-col gap-4 cursor-pointer">
+                    <div class="bg-amber-100 text-amber-700 p-3.5 rounded-2xl inline-block self-start text-2xl">
+                        💰
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-base">إدارة خصوصية الدفعات للزبائن</h4>
+                        <p class="text-xs text-gray-400 mt-1.5 leading-relaxed">تحكم في ظهور أو إخفاء جدول سجل الدفعات السابقة بالدينار والدولار في شاشة العميل.</p>
+                    </div>
+                </button>
+
+                <!-- كارت 2: خصوصية الإعلانات -->
+                <button onclick="showSettingsDetail('campaigns')" class="bg-white hover:bg-indigo-50 border border-gray-100 p-6 rounded-3xl shadow-sm hover:shadow-md transition text-right flex flex-col gap-4 cursor-pointer">
+                    <div class="bg-indigo-100 text-indigo-700 p-3.5 rounded-2xl inline-block self-start text-2xl">
+                        📢
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-base">إدارة خصوصية الحملات الإعلانية للزبائن</h4>
+                        <p class="text-xs text-gray-400 mt-1.5 leading-relaxed">تحكم في ظهور أو إخفاء جدول الحملات الإعلانية النشطة من فيسبوك وتكاليفها وعمولتها.</p>
+                    </div>
+                </button>
+
+                <!-- كارت 3: ربط التليجرام الخاص بالأدمن -->
+                <div class="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm flex flex-col justify-between gap-4 text-right">
+                    <div>
+                        <div class="bg-indigo-100 text-indigo-700 p-3.5 rounded-2xl inline-block self-start text-2xl">
+                            💬
+                        </div>
+                        <h4 class="font-bold text-gray-800 text-base mt-2">إشعارات التليجرام للأدمن</h4>
+                        <p class="text-xs text-gray-400 mt-1.5 leading-relaxed">لربط حسابك، اضغط على الزر أدناه لمعرفة معرّفك من البوت ثم الصقه واضغط حفظ.</p>
+                    </div>
+                    <div class="space-y-3 pt-2 border-t border-gray-50">
+                        <a href="https://t.me/userinfobot" target="_blank"
+                            class="w-full text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-750 font-bold py-1.5 rounded-lg text-[10px] transition inline-block text-decoration-none">
+                            🔍 الحصول على معرّف التليجرام الخاص بك
+                        </a>
+                        <div>
+                            <label class="block text-[9px] font-bold text-gray-500 mb-1">معرّف التليجرام الخاص بك (Chat ID):</label>
+                            <input type="text" id="admin-tg-chat-id-input" placeholder="مثال: 1746721547"
+                                class="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-center">
+                        </div>
+                        <button onclick="saveAdminTelegramChatId()"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 rounded-lg text-[10px] transition cursor-pointer">
+                            💾 حفظ معرّف التليجرام
+                        </button>
+                    </div>
+                </div>
+
+                <!-- كارت 4: تنبيهات فوترة فيسبوك وسحب الرصيد -->
+                <div class="bg-white border border-purple-100 p-6 rounded-3xl shadow-sm flex flex-col justify-between gap-4 text-right bg-gradient-to-b from-white to-purple-50/20">
+                    <div>
+                        <div class="bg-purple-100 text-purple-700 p-3.5 rounded-2xl inline-block self-start text-2xl">
+                            💳
+                        </div>
+                        <h4 class="font-bold text-gray-800 text-base mt-2">تنبيهات فوترة فيسبوك وسحب الرصيد</h4>
+                        <p class="text-xs text-gray-400 mt-1.5 leading-relaxed">إشعار تلقائي بتليجرام عند حلول يوم الفوترة المحدد، أو عند وصول الصرف إلى 90% من العتبة القصوى.</p>
+                    </div>
+                    <div class="space-y-2.5 pt-2 border-t border-purple-50">
+                        <div>
+                            <label class="block text-[9px] font-bold text-gray-600 mb-1">يوم الفوترة الشهري (من 1 إلى 31):</label>
+                            <input type="number" id="fb-billing-day-input" min="1" max="31" placeholder="مثال: 28"
+                                class="w-full px-2 py-1 border border-purple-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold text-center bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold text-gray-600 mb-1">عتبة الفوترة لفيسبوك ($):</label>
+                            <input type="number" id="fb-threshold-input" min="10" placeholder="292" value="292"
+                                class="w-full px-2 py-1 border border-purple-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold text-center bg-white">
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="saveFbBillingSettings()"
+                                class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 rounded-lg text-[10px] transition cursor-pointer shadow-sm">
+                                💾 حفظ الإعدادات
+                            </button>
+                            <button onclick="testFbBillingAlert()" title="إرسال تنبيه تجريبي لتليجرام للتأكد من وصوله"
+                                class="bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold py-1.5 px-3 rounded-lg text-[10px] transition cursor-pointer">
+                                🧪 فحص
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- لوحة التفاصيل (تفتح عند الضغط على الكرت) -->
+            <div id="settings-detail-panel" class="hidden bg-white p-6 rounded-3xl border border-gray-100 shadow-sm mt-6 space-y-4">
+                <div class="flex justify-between items-center pb-3 border-b border-gray-100 flex-wrap gap-2">
+                    <h4 id="settings-detail-title" class="font-bold text-gray-850 text-sm">تعديل الصلاحيات</h4>
+                    <button onclick="hideSettingsDetail()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-4.5 py-2 rounded-xl font-bold transition cursor-pointer">
+                        🔙 العودة للمركز
+                    </button>
+                </div>
+                
+                <p class="text-xs text-gray-400 font-semibold mb-2" id="settings-detail-description"></p>
+
+                <div class="overflow-x-auto border border-gray-100 rounded-2xl">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                            <tr>
+                                <th class="p-3">اسم الزبون</th>
+                                <th class="p-3 text-center" id="settings-table-action-header">حالة العرض</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settings-detail-clients-list" class="divide-y divide-gray-100">
+                            <!-- سيتم حقن الزبائن ديناميكياً -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex gap-3 pt-3 border-t border-gray-100">
+                    <button onclick="saveDetailSettings()" class="w-full bg-indigo-650 hover:bg-indigo-750 text-white font-bold py-3 rounded-xl text-sm transition shadow cursor-pointer">
+                        💾 حفظ الإعدادات
+                    </button>
+                    <button onclick="hideSettingsDetail()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-xl text-sm transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- 4. قسم إدارة الشركاء ومقدمي الخدمات -->
+        <div id="partners-view" class="space-y-6 hidden">
+            <!-- أزرار سريعة للشركاء -->
+            <div class="flex flex-wrap gap-4 items-center justify-between">
+                <button onclick="openAddPartnerModal()"
+                    class="bg-pink-600 hover:bg-pink-700 text-white py-3 px-6 rounded-2xl font-bold shadow-md cursor-pointer transition">
+                    ➕ إضافة شريك (مقدم خدمات) جديد
+                </button>
+                <div class="bg-white px-5 py-3 rounded-2xl border border-gray-100 flex items-center gap-3">
+                    <span class="text-xs text-gray-400 font-bold">إجمالي الشركاء المسجلين:</span>
+                    <span class="text-sm font-black text-pink-750" id="partners-count-lbl">0 شريك</span>
+                </div>
+            </div>
+
+            <!-- بطاقات التحليلات للشركاء (Analytics Cards) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- كارت 1: الطلبات المعلقة -->
+                <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] text-gray-400 font-bold block">طلبات جديدة/معلقة</span>
+                        <span class="text-lg font-black text-amber-600" id="stat-pending-services-count">0 طلب</span>
+                    </div>
+                    <span class="text-xl bg-amber-50 p-2 rounded-xl">⏳</span>
+                </div>
+                <!-- كارت 2: الطلبات المرفوضة -->
+                <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] text-gray-400 font-bold block">الطلبات المرفوضة</span>
+                        <span class="text-lg font-black text-red-650" id="stat-rejected-services-count">0 طلب</span>
+                    </div>
+                    <span class="text-xl bg-red-50 p-2 rounded-xl">❌</span>
+                </div>
+                <!-- كارت 3: أموال الشركاء المستحقة طرفي -->
+                <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] text-gray-400 font-bold block">مستحقات الشركاء عندي</span>
+                        <span class="text-sm font-black text-indigo-700 block" id="stat-partners-holdings-usd">$0.00</span>
+                        <span class="text-[10px] text-slate-400 font-semibold animate-pulse" id="stat-partners-holdings-dzd">0 دج</span>
+                    </div>
+                    <span class="text-xl bg-indigo-50 p-2 rounded-xl">💰</span>
+                </div>
+                <!-- كارت 4: النزاعات والتبليغات -->
+                <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] text-gray-400 font-bold block">نزاعات وتبليغات نشطة</span>
+                        <span class="text-lg font-black text-red-700" id="stat-disputes-count">0 نزاع</span>
+                    </div>
+                    <span class="text-xl bg-red-100 p-2 rounded-xl">⚠️</span>
+                </div>
+            </div>
+
+            <!-- جدول مراجعة وقبول الخدمات المضافة من الشركاء -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-700 text-sm">
+                        📋 خدمات الشركاء المعلقة بانتظار الموافقة
+                    </h3>
+                    <span id="pending-services-badge" class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">0 خدمة</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                            <tr>
+                                <th class="p-3">الشريك</th>
+                                <th class="p-3">شعار الخدمة</th>
+                                <th class="p-3">عنوان الخدمة</th>
+                                <th class="p-3">الوصف</th>
+                                <th class="p-3">السعر المقترح ($)</th>
+                                <th class="p-3 text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-pending-services-table" class="divide-y divide-gray-100 text-xs">
+                            <tr>
+                                <td colspan="6" class="p-6 text-center text-gray-400 font-bold">لا توجد خدمات معلقة حالياً.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- جدول طلبات سحب الأرباح للشركاء -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-700 text-sm">
+                        💰 طلبات سحب الأرباح المعلقة للشركاء
+                    </h3>
+                    <span id="pending-payouts-badge" class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">0 طلب</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                            <tr>
+                                <th class="p-3">مقدم الخدمة</th>
+                                <th class="p-3">المبلغ ($)</th>
+                                <th class="p-3">المستلم بالدينار (دج)</th>
+                                <th class="p-3">طريقة التحويل</th>
+                                <th class="p-3">بيانات التحويل</th>
+                                <th class="p-3 text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-pending-payouts-table" class="divide-y divide-gray-100 text-xs">
+                            <tr>
+                                <td colspan="6" class="p-6 text-center text-gray-400 font-bold">لا توجد طلبات سحب معلقة حالياً.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- جدول النزاعات والتبليغات النشطة -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-red-50/50 flex justify-between items-center">
+                    <h3 class="font-bold text-red-800 text-sm flex items-center gap-1.5">
+                        <span>⚠️ النزاعات والاعتراضات المعلقة</span>
+                    </h3>
+                    <span id="active-disputes-badge" class="bg-red-100 text-red-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">0 نزاع</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                            <tr>
+                                <th class="p-3">الزبون</th>
+                                <th class="p-3">الشريك</th>
+                                <th class="p-3">الخدمة</th>
+                                <th class="p-3">سبب الاعتراض</th>
+                                <th class="p-3">المبلغ ($)</th>
+                                <th class="p-3 text-center">التواصل</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-disputes-table" class="divide-y divide-gray-100 text-xs">
+                            <tr>
+                                <td colspan="6" class="p-6 text-center text-gray-400 font-bold">لا توجد نزاعات معلقة حالياً.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- جدول بجميع مقدمي الخدمات المسجلين وإحصائيات محافظهم -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50">
+                    <h3 class="font-bold text-gray-700 text-sm">🤝 دليل مقدمي الخدمات وإحصائيات المحافظ</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                            <tr>
+                                <th class="p-3">اسم الشريك</th>
+                                <th class="p-3">رقم الهاتف</th>
+                                <th class="p-3 text-center">إجمالي الطلبات</th>
+                                <th class="p-3 text-center">الطلبات المكتملة</th>
+                                <th class="p-3 text-center">الرصيد المعلق ($)</th>
+                                <th class="p-3 text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-providers-list-table" class="divide-y divide-gray-100 text-xs">
+                            <tr>
+                                <td colspan="6" class="p-6 text-center text-gray-400 font-bold">لا يوجد أي شركاء مسجلين.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. قسم مصاريف وتكاليف الشركة (نظام ERP) -->
+        <div id="expenses-view" class="space-y-6 hidden">
+            <div class="bg-gradient-to-r from-rose-600 to-rose-800 text-white rounded-3xl p-6 text-center shadow-lg relative overflow-hidden">
+                <h3 class="text-xl font-bold">💸 إدارة مصاريف وتكاليف الشركة الصافية</h3>
+                <p class="text-xs text-rose-100 mt-2">تسجيل ومتابعة كافة المصاريف التشغيلية (خوادم، دومين، تسويق، أخرى) لحساب الفائدة الحقيقية الصافية للمنصة</p>
+            </div>
+
+            <!-- قسم التحليلات والمنحنيات البيانية للمصاريف -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- كارت 1: مقارنة المصاريف الشهرية -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between min-h-[300px]">
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-xs">📊 مقارنة مصاريف الشهر الحالي vs الشهر الفائت</h4>
+                        <p class="text-[9px] text-gray-400 mt-1">توضح حجم التكاليف الإجمالي مقارنةً بدورة الشهر السابق</p>
+                    </div>
+                    <div class="flex-1 relative h-48 mt-4">
+                        <canvas id="expenses-comparison-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- كارت 2: توزيع المصاريف حسب التصنيف -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between min-h-[300px]">
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-xs">🍕 توزيع التكاليف حسب الفئات والتصنيفات</h4>
+                        <p class="text-[9px] text-gray-400 mt-1">تحليل نسب إنفاق الشركة بين السيرفرات والتسويق والرواتب</p>
+                    </div>
+                    <div class="flex-1 relative h-48 mt-4">
+                        <canvas id="expenses-categories-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- شبكة الإدخال وعرض المجموع -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- كارت تسجيل مصروف جديد -->
+                <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4 lg:col-span-1 text-right">
+                    <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                        <span>✍️</span> تسجيل مصروف جديد
+                    </h4>
+                    <form onsubmit="saveCompanyExpense(event)" id="expense-form" class="space-y-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">اسم المصروف (مثال: تجديد دومين الموقع):</label>
+                            <input type="text" id="expense-title" required placeholder="اسم أو عنوان المصروف..."
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ بالدولار ($):</label>
+                                <input type="number" step="0.01" min="0" id="expense-amount-usd" value="0" required
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ بالدينار (دج):</label>
+                                <input type="number" step="1" min="0" id="expense-amount-dzd" value="0" required
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold text-center">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">تصنيف المصروف:</label>
+                            <select id="expense-category" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold">
+                                <option value="سيرفرات ودومين">سيرفرات ودومين 🌐</option>
+                                <option value="تسويق وإعلانات">تسويق وإعلانات 📢</option>
+                                <option value="عمولات ورواتب">عمولات ورواتب 🤝</option>
+                                <option value="أخرى">أخرى ⚙️</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">ملاحظات إضافية:</label>
+                            <textarea id="expense-notes" rows="2" placeholder="تفاصيل المصروف إن وجدت..."
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"></textarea>
+                        </div>
+                        <button type="submit" id="expense-submit-btn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer shadow">
+                            💾 تسجيل المصروف
+                        </button>
+                    </form>
+                </div>
+
+                <!-- جدول عرض المصاريف السابقة -->
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2 flex flex-col justify-between">
+                    <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-700 text-sm">
+                            📝 سجل التكاليف والمصاريف المسجلة
+                        </h3>
+                        <span id="expenses-count-badge" class="bg-rose-100 text-rose-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">0 مصروف</span>
+                    </div>
+                    <div class="overflow-x-auto flex-1 text-right">
+                        <table class="w-full text-right text-sm">
+                            <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                                <tr>
+                                    <th class="p-3">اسم المصروف</th>
+                                    <th class="p-3">التصنيف</th>
+                                    <th class="p-3 text-center">المبلغ ($)</th>
+                                    <th class="p-3 text-center">المبلغ (دج)</th>
+                                    <th class="p-3">التاريخ</th>
+                                    <th class="p-3 text-center">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-expenses-table-body" class="divide-y divide-gray-100 text-xs">
+                                <tr>
+                                    <td colspan="6" class="p-6 text-center text-gray-400 font-bold">⏳ جاري تحميل سجل المصاريف...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- قسم سجل الديون والالتزامات المالية للشركة -->
+            <div class="border-t border-gray-100 pt-6">
+                <div class="bg-slate-100 p-4 rounded-2xl mb-6 flex justify-between items-center flex-wrap gap-2 text-right">
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-sm">🤝 سجل ديون والتزامات الشركة (المدفوع والمستحق)</h3>
+                        <p class="text-[10px] text-gray-500 mt-1">سجل الديون والائتمان لحفظ المعاملات المالية بالزائد (+) أو بالناقص (-)</p>
+                    </div>
+                    
+                    <!-- بطاقات إحصائية للديون -->
+                    <div class="flex gap-2 flex-wrap text-center font-bold text-[10px]">
+                        <div class="bg-red-50 text-red-750 px-3 py-1.5 rounded-xl border border-red-100">
+                            🔴 ديون عليّ (للناس): <span id="debts-to-pay-lbl">0 دج</span>
+                        </div>
+                        <div class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl border border-emerald-100">
+                            🟢 ديون لي (عند الناس): <span id="debts-to-receive-lbl">0 دج</span>
+                        </div>
+                        <div class="bg-indigo-50 text-indigo-750 px-3 py-1.5 rounded-xl border border-indigo-100">
+                            ⚖️ صافي الميزان: <span id="debts-net-lbl">0 دج</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- نموذج تسجيل دين جديد -->
+                    <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4 lg:col-span-1 text-right">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <span>✍️</span> تسجيل دين/التزام جديد
+                        </h4>
+                        <form onsubmit="saveCompanyDebt(event)" id="debt-form" class="space-y-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">اسم الطرف الآخر (مثال: صديقي محمد):</label>
+                                <input type="text" id="debt-person-name" required placeholder="اسم الشخص أو الشركة..."
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">طبيعة المعاملة:</label>
+                                <select id="debt-type" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold">
+                                    <option value="علي">🔴 ديْن عليّ (أنا مدين له - بالناقص)</option>
+                                    <option value="لي">🟢 ديْن لي (هو مدين لي - بالزائد)</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ بالدولار ($):</label>
+                                    <input type="number" step="0.01" min="0" id="debt-amount-usd" value="0" required
+                                        class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold text-center">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ بالدينار (دج):</label>
+                                    <input type="number" step="1" min="0" id="debt-amount-dzd" value="0" required
+                                        class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold text-center">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">تاريخ السداد المتوقع (اختياري):</label>
+                                <input type="date" id="debt-due-date"
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">ملاحظات الدين:</label>
+                                <textarea id="debt-notes" rows="2" placeholder="ملاحظات حول طريقة الدفع أو التفاصيل..."
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500"></textarea>
+                            </div>
+                            <button type="submit" id="debt-submit-btn" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer shadow">
+                                💾 حفظ الدين
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- جدول الديون والالتزامات -->
+                    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2 flex flex-col justify-between">
+                        <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center flex-wrap gap-2">
+                            <h3 class="font-bold text-gray-700 text-sm">
+                                📝 جدول متابعة الديون والالتزامات
+                            </h3>
+                            <!-- فلتر التصفية -->
+                            <div class="flex items-center gap-1">
+                                <select onchange="loadCompanyDebts()" id="debt-status-filter" class="px-2.5 py-1 border border-gray-200 rounded-xl text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="الكل">كل الديون</option>
+                                    <option value="غير مقضي" selected>الديون غير المقضية</option>
+                                    <option value="مقضي">الديون المقضية (المنتهية)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto flex-1 text-right">
+                            <table class="w-full text-right text-sm">
+                                <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                                    <tr>
+                                        <th class="p-3">الاسم</th>
+                                        <th class="p-3">الاتجاه</th>
+                                        <th class="p-3 text-center">المبلغ ($)</th>
+                                        <th class="p-3 text-center">المبلغ (دج)</th>
+                                        <th class="p-3">الاستحقاق</th>
+                                        <th class="p-3 text-center">الحالة</th>
+                                        <th class="p-3 text-center">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-debts-table-body" class="divide-y divide-gray-100 text-xs">
+                                    <tr>
+                                        <td colspan="7" class="p-6 text-center text-gray-400 font-bold">⏳ جاري تحميل سجل الديون...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. قسم إدارة الخزينة والسيولة (نظام الخزائن الثلاث) -->
+        <div id="vault-view" class="space-y-6 hidden">
+            <div class="bg-gradient-to-r from-amber-500 to-amber-700 text-white rounded-3xl p-6 text-center shadow-lg relative overflow-hidden">
+                <h3 class="text-xl font-bold">💰 نظام الخزائن الثلاث وإدارة السيولة المالية</h3>
+                <p class="text-xs text-amber-100 mt-2">متابعة دقيقة لرأس المال، الأرباح، رصيد الإعلانات، وحركة الخزينة والسيولة</p>
+            </div>
+
+            <!-- بطاقات أرصدة الخزينة الفورية -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- كارت 1: رصيد البطاقات بالدولار -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-1">💳 رصيد البطاقة الحالي</span>
+                        <h3 id="vault-card-usd" class="text-2xl font-black text-blue-700">$0.00</h3>
+                    </div>
+                    <p class="text-[9px] text-gray-400 mt-2">الرصيد المتوفر لإعلانات فيسبوك بالدولار</p>
+                </div>
+                <!-- كارت 2: خزينة الشركة بالدينار -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-gray-400 block uppercase mb-1">🏦 خزينة الشركة (DZD)</span>
+                        <h3 id="vault-company-dzd" class="text-2xl font-black text-indigo-700">0 دج</h3>
+                    </div>
+                    <p class="text-[9px] text-gray-400 mt-2">تضم رأس مال تدوير الإعلانات (80%) + فائدة الشركة (30%)</p>
+                </div>
+                <!-- كارت 3: فائدة الأدمن الشخصية بالدينار -->
+                <div class="bg-emerald-50 rounded-3xl border border-emerald-100 p-5 shadow-sm flex flex-col justify-between ring-1 ring-emerald-500/20">
+                    <div>
+                        <span class="text-xs font-bold text-emerald-600 block uppercase mb-1">👤 فائدتك الشخصية (DZD)</span>
+                        <h3 id="vault-my-dzd" class="text-2xl font-black text-emerald-700">0 دج</h3>
+                    </div>
+                    <p class="text-[9px] text-emerald-600 mt-2">حصة أرباحك الـ 70% المستقطعة وجاهزة للسحب</p>
+                </div>
+            </div>
+
+            <!-- الحركات المالية والنماذج -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- نماذج العمليات المالية -->
+                <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4 lg:col-span-1 text-right">
+                    <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                        <span>💸</span> تنفيذ حركة مالية بالخزينة
+                    </h4>
+                    
+                    <!-- تابات النماذج الفرعية -->
+                    <div class="flex border-b border-gray-100 text-xs gap-2">
+                        <button type="button" onclick="switchVaultForm('buy')" id="btn-tab-buy" class="flex-1 pb-2 font-bold border-b-2 border-amber-600 text-amber-700 transition cursor-pointer">شراء دولار</button>
+                        <button type="button" onclick="switchVaultForm('fb')" id="btn-tab-fb" class="flex-1 pb-2 font-bold border-b-2 border-transparent text-gray-400 transition cursor-pointer">استهلاك فيس</button>
+                        <button type="button" onclick="switchVaultForm('personal')" id="btn-tab-personal" class="flex-1 pb-2 font-bold border-b-2 border-transparent text-gray-400 transition cursor-pointer">إدارة الفائدة</button>
+                    </div>
+
+                    <!-- نموذج 1: شراء دولار وتغذية البطاقة -->
+                    <form onsubmit="executeBuyUsd(event)" id="form-vault-buy" class="space-y-3 block">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ المراد شراؤه ($):</label>
+                            <input type="number" step="0.01" min="0.01" id="vault-buy-usd-amount" required placeholder="100"
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">سعر صرف الشراء (دج):</label>
+                            <input type="number" step="0.1" min="1" id="vault-buy-exchange-rate" value="220" required placeholder="220"
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">ملاحظات الشراء:</label>
+                            <input type="text" id="vault-buy-notes" placeholder="شراء من Binance Pay..."
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        </div>
+                        <button type="submit" id="vault-buy-submit-btn" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer shadow">
+                            💳 تأكيد الشراء وشحن البطاقة
+                        </button>
+                    </form>
+
+                    <!-- نموذج 2: تسجيل استهلاك فيسبوك -->
+                    <form onsubmit="executeFbSpend(event)" id="form-vault-fb" class="space-y-3 hidden">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ المسحوب من فيسبوك ($):</label>
+                            <input type="number" step="0.01" min="0.01" id="vault-fb-amount" required placeholder="50"
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">ملاحظات الاستهلاك:</label>
+                            <input type="text" id="vault-fb-notes" placeholder="فاتورة استهلاك فيسبوك اليومية..."
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <button type="submit" id="vault-fb-submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer shadow">
+                            📉 خصم الاستهلاك من البطاقة
+                        </button>
+                    </form>
+
+                    <!-- نموذج 3: إدارة الأرباح الشخصية للأدمن -->
+                    <form onsubmit="executePersonalVaultAction(event)" id="form-vault-personal" class="space-y-3 hidden">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">نوع الحركة:</label>
+                            <select id="vault-personal-action" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold">
+                                <option value="withdraw">سحب أرباح شخصية 🚪</option>
+                                <option value="deposit">إرجاع أموال للعلبة 📥</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ بالدينار (دج):</label>
+                            <input type="number" step="10" min="10" id="vault-personal-amount" required placeholder="5000"
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">ملاحظات:</label>
+                            <input type="text" id="vault-personal-notes" placeholder="سحب فائدة شخصية..."
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                        <button type="submit" id="vault-personal-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer shadow">
+                            🤝 تنفيذ عملية سحب/إيداع الفائدة
+                        </button>
+                    </form>
+                </div>
+
+                <!-- جدول عرض سجل الحركات لتدقيق الخزينة -->
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden lg:col-span-2 flex flex-col justify-between text-right">
+                    <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                        <h4 class="font-bold text-gray-700 text-sm">📜 كشف وسجل حركات الخزائن الثلاث (Audit Log)</h4>
+                        <button onclick="exportVaultLedgerToCSV()" 
+                            class="bg-indigo-650 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-xl text-[10px] shadow transition cursor-pointer">
+                            📥 تصدير كشف الحركات (CSV)
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto flex-1">
+                        <table class="w-full text-right text-xs">
+                            <thead class="bg-gray-50 text-gray-500 border-b border-gray-100">
+                                <tr>
+                                    <th class="p-3">التاريخ</th>
+                                    <th class="p-3 text-center">الخزينة المستهدفة</th>
+                                    <th class="p-3 text-center">العملية</th>
+                                    <th class="p-3 text-center">المبلغ (دج)</th>
+                                    <th class="p-3 text-center">المبلغ ($)</th>
+                                    <th class="p-3 text-center">سعر الصرف</th>
+                                    <th class="p-3">ملاحظات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vault-ledger-table-body" class="divide-y divide-gray-100">
+                                <tr>
+                                    <td colspan="7" class="p-6 text-center text-gray-400 font-bold">لا توجد حركات مسجلة بالخزينة حالياً.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 7. قسم تذاكر الدعم الفني للعملاء -->
+        <div id="tickets-view" class="space-y-6 hidden text-right">
+            <div class="bg-gradient-to-r from-indigo-650 to-purple-650 text-white rounded-3xl p-6 text-center shadow-lg relative overflow-hidden">
+                <h3 class="text-xl font-bold">🛠️ مركز إدارة تذاكر الدعم الفني والشكاوى</h3>
+                <p class="text-xs text-indigo-100 mt-2">متابعة استفسارات وشكاوى العملاء، الرد عليها، وحلها لضمان جودة الخدمة</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-[2rem] border border-gray-150 shadow-sm space-y-4">
+                <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                    <span>📋</span> التذاكر الواردة من العملاء
+                </h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-xs">
+                        <thead class="bg-gray-50 text-gray-500 border-b border-gray-100">
+                            <tr>
+                                <th class="p-3">العميل</th>
+                                <th class="p-3">العنوان / الاستفسار</th>
+                                <th class="p-3">التصنيف</th>
+                                <th class="p-3 text-center">الحالة</th>
+                                <th class="p-3 text-center">تاريخ الإرسال</th>
+                                <th class="p-3 text-left">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-tickets-table-body" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="6" class="p-6 text-center text-gray-400 font-bold">لا توجد تذاكر دعم فني واردة حالياً.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
     </main>
+
+    <!-- ===== نافذة الرد على تذكرة دعم فني وحلها ===== -->
+    <div id="reply-ticket-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden text-right border border-gray-100">
+            <div class="bg-gradient-to-r from-indigo-650 to-purple-650 p-4 text-white text-center font-bold text-base">
+                🛠️ الرد على تذكرة الدعم الفني
+            </div>
+            <form onsubmit="submitAdminTicketReply(event)" class="p-6 space-y-4">
+                <input type="hidden" id="reply-ticket-id">
+                <div class="space-y-1">
+                    <span class="text-[9px] font-black text-gray-400 block">شرح مشكلة العميل:</span>
+                    <p id="reply-ticket-desc" class="text-xs bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed text-gray-700 font-semibold"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-650 mb-1">اكتب الرد الرسمي للعميل:</label>
+                    <textarea id="reply-ticket-text" required rows="4" placeholder="اكتب الحل المقترح أو التوضيح للعميل..."
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50/50"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-650 mb-1">تحديث حالة التذكرة:</label>
+                    <select id="reply-ticket-status" required
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50/50 font-bold">
+                        <option value="in_progress">قيد المعالجة (In Progress)</option>
+                        <option value="resolved">تم الحل وإغلاق التذكرة (Resolved)</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" id="reply-ticket-submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer shadow-md shadow-indigo-600/10">
+                        💾 إرسال الرد وتحديث الحالة
+                    </button>
+                    <button type="button" onclick="closeReplyTicketModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
     <!-- المساعد الصوتي -->
         <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl shadow-md p-6 text-white">
             <h3 class="text-lg font-bold mb-2 flex items-center gap-2">
@@ -264,6 +1028,107 @@
         </div>
     </div>
 
+    <!-- ===== نافذة إضافة شريك جديد (مقدم خدمة) ===== -->
+    <div id="partner-modal" class="hidden fixed inset-0 bg-gray-900/50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-right">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">إضافة مقدم خدمات (شريك) جديد</h3>
+            <form id="partner-form" onsubmit="saveNewPartner(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">اسم الشريك الكامل (أو الشركة)</label>
+                    <input type="text" id="new-partner-name" required placeholder="مثال: الجزائر للخدمات الرقمية"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">رقم هاتف الدخول (سجل الدخول به)</label>
+                    <input type="text" id="new-partner-phone" required placeholder="مثال: 0657693583"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">البريد الإلكتروني</label>
+                    <input type="email" id="new-partner-email" required placeholder="partner@email.com"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">كلمة المرور</label>
+                    <input type="password" id="new-partner-pass" required placeholder="••••••••"
+                        class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                </div>
+                <div class="flex space-x-2 space-x-reverse pt-2">
+                    <button type="submit" class="flex-1 bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 rounded-xl text-sm transition cursor-pointer">حفظ الحساب</button>
+                    <button type="button" onclick="closePartnerModal()" class="px-4 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm transition cursor-pointer">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== نافذة إدارة وتعديل/حذف الزبائن ===== -->
+    <div id="manage-clients-modal" class="hidden fixed inset-0 bg-gray-900/50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 overflow-hidden text-right border border-gray-100">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">⚙️ تعديل أو حذف زبون</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">اختر الزبون للبدء:</label>
+                    <select id="manage-client-select" onchange="loadClientDetailsToManage()"
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+                        <option value="">-- اختر زبوناً --</option>
+                    </select>
+                </div>
+
+                <div id="manage-client-fields" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">الاسم الكامل</label>
+                        <input type="text" id="manage-client-name"
+                            class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">رقم الهاتف</label>
+                        <input type="text" id="manage-client-phone"
+                            class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">البريد الإلكتروني</label>
+                        <input type="email" id="manage-client-email"
+                            class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">كلمة السر</label>
+                        <input type="text" id="manage-client-pass" placeholder="أدخل كلمة السر الجديدة"
+                            class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">الكلمة المفتاحية للحملة</label>
+                        <input type="text" id="manage-client-keyword"
+                            class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">سعر الصرف</label>
+                        <input type="number" id="manage-client-rate"
+                            class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm">
+                    </div>
+                    
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="saveManagedClient()"
+                            class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                            💾 حفظ التعديلات
+                        </button>
+                        <button onclick="deleteManagedClient()"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded-xl text-sm transition cursor-pointer">
+                            🗑️ حذف الزبون
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="border-t border-gray-100 pt-3">
+                    <button onclick="closeManageClientsModal()"
+                        class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2 rounded-xl text-sm transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== نافذة تسجيل دفعة جديدة يدوياً ===== -->
     <div id="payment-modal"
         class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
@@ -277,6 +1142,15 @@
                     <select id="pop-client-select" required onchange="handleClientSelection()"
                         class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
                         <option value="">-- جاري تحميل قائمة الزبائن... --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-1">نوع الدفعة المضافة:</label>
+                    <select id="pop-payment-type" required
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer font-bold">
+                        <option value="ads">📈 دفعة إعلانات (فائدة 20% مقتطعة)</option>
+                        <option value="views">📺 دفعة مشاهدات (بدون فائدة حالياً)</option>
+                        <option value="services">🛍️ دفعة ملء الحساب لشراء خدمات (بدون فائدة)</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
@@ -412,35 +1286,62 @@
 
 
 
-    <!-- ===== القائمة الجانبية ===== -->
-    <div id="side-menu-overlay" onclick="closeMenu()" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden z-40 transition-opacity"></div>
-    <div id="side-menu" class="fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 flex flex-col">
+    </div> <!-- نهاية حاوية المحتوى الرئيسية flex-1 wrapper -->
+
+    <!-- ===== القائمة الجانبية المحدثة (ثابتة على اليمين في الحاسوب) ===== -->
+    <div id="side-menu-overlay" onclick="closeMenu()" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden z-40 transition-opacity md:hidden"></div>
+    
+    <div id="side-menu" class="fixed top-0 right-0 h-full w-64 bg-white border-l border-gray-150 z-40 md:z-30 transform translate-x-full md:translate-x-0 transition-transform duration-300 flex flex-col shadow-2xl md:shadow-none">
+        
+        <!-- الهيدر -->
         <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-indigo-50">
-            <h2 class="font-bold text-indigo-800 text-lg">القائمة</h2>
-            <button onclick="closeMenu()" class="text-gray-500 hover:text-red-500 text-2xl font-bold cursor-pointer">&times;</button>
+            <h2 class="font-bold text-indigo-800 text-lg flex items-center gap-1">🛡️ القائمة الرئيسية</h2>
+            <button onclick="closeMenu()" class="md:hidden text-gray-500 hover:text-red-500 text-2xl font-bold cursor-pointer leading-none">&times;</button>
         </div>
-        <div class="p-4 flex flex-col gap-3">
+        
+        <!-- روابط الملاحة -->
+        <div class="p-4 flex flex-col gap-2">
+            <button onclick="switchAdminTab('dashboard')" class="w-full text-right flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                🏠 لوحة التحكم
+            </button>
+            <button onclick="switchAdminTab('expenses'); closeMenu();" class="w-full text-right flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                💸 مصاريف وتكاليف الشركة
+            </button>
+            <button onclick="switchAdminTab('vault'); closeMenu();" class="w-full text-right flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                💰 إدارة الخزينة والسيولة
+            </button>
             <a href="calculator.html" class="flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">🧮 الحاسبة السريعة</a>
-        </div>
-        <div class="p-4 flex flex-col gap-3">
             <a href="admin-analytics.html" class="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">📊 تحاليل ونشاط الزبائن</a>
             <a href="admin-services.html" class="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">🛒 إدارة الخدمات والمعروضات</a>
             <a href="campaigns.html" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">📢 الحملات الإعلانية</a>
             <a href="pending-requests.html" class="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">🔔 طلبات التسجيل الجديدة</a>
+            <button onclick="switchAdminTab('partners'); closeMenu();" class="w-full text-right flex items-center gap-2 bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                🤝 إدارة الشركاء والطلبات
+            </button>
+            <button onclick="switchAdminTab('tickets'); closeMenu();" class="w-full text-right flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                🛠️ تذاكر الدعم الفني
+            </button>
         </div>
-        <div class="mt-auto p-4 border-t border-gray-100">
-            <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">🚪 تسجيل الخروج</button>
+        
+        <!-- أسفل القائمة: الإعدادات وتسجيل الخروج بجانب بعضهما -->
+        <div class="mt-auto p-4 border-t border-gray-100 flex flex-col gap-2 bg-gray-50/50">
+            <button onclick="switchAdminTab('settings'); closeMenu();" class="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer">
+                ⚙️ الإعدادات العامة
+            </button>
+            <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer">
+                🚪 تسجيل الخروج
+            </button>
         </div>
     </div>
 
     <script>
         function openMenu() {
             document.getElementById('side-menu-overlay').classList.remove('hidden');
-            document.getElementById('side-menu').classList.remove('-translate-x-full');
+            document.getElementById('side-menu').classList.remove('translate-x-full');
         }
         function closeMenu() {
             document.getElementById('side-menu-overlay').classList.add('hidden');
-            document.getElementById('side-menu').classList.add('-translate-x-full');
+            document.getElementById('side-menu').classList.add('translate-x-full');
         }
     </script>
     <!-- Toast Notification -->
@@ -451,9 +1352,41 @@
         <p class="toast-msg" id="toast-msg-body">—</p>
     </div>
 </div>
-    <script src="js/config.js"></script>
-    <script src="js/analytics.js"></script>
-    <script src="js/admin.js"></script>
+    <!-- ===== نافذة رفض طلب سحب وكتابة الملاحظة ===== -->
+    <div id="reject-payout-modal"
+        class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-[2rem] shadow-xl max-w-md w-full overflow-hidden text-right">
+            <div class="bg-red-600 p-4 text-white text-center font-bold text-base">
+                ❌ رفض طلب سحب وإرجاع الرصيد
+            </div>
+            <form onsubmit="submitRejectPayoutForm(event)" class="p-6 space-y-4">
+                <input type="hidden" id="rej-payout-id">
+                <input type="hidden" id="rej-provider-id">
+                <input type="hidden" id="rej-payout-amount">
+                
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1">اكتب سبب أو ملاحظة الرفض للشريك:</label>
+                    <textarea id="rej-payout-notes" required rows="3" placeholder="مثال: رقم الحساب CCP غير صحيح، أو الاسم لا يطابق المستندات..."
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50/50"></textarea>
+                </div>
+                
+                <div class="flex gap-3 pt-2">
+                    <button type="submit"
+                        class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                        ❌ تأكيد الرفض وإرجاع الرصيد
+                    </button>
+                    <button type="button" onclick="closeRejectPayoutModal()"
+                        class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/config.js?v=1.6"></script>
+    <script src="js/analytics.js?v=1.6"></script>
+    <script src="js/admin.js?v=1.6"></script>
 </body>
 
 </html>
