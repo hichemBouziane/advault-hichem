@@ -1075,14 +1075,28 @@ async function openClientPayments(clientId, clientName) {
     document.getElementById('client-payments-modal').classList.remove('hidden');
     const tbody = document.getElementById('client-payments-list');
     const noMsg = document.getElementById('no-payments-msg');
-    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-400">جاري التحميل...</td></tr>';
-    noMsg.classList.add('hidden');
-    const { data: payments, error } = await _supabase.from('payments').select('*').eq('client_id', clientId).order('date', { ascending: false });
+    const { data: payments, error } = await _supabase
+        .from('payments')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
+
     tbody.innerHTML = '';
     if (!payments || payments.length === 0) {
         noMsg.classList.remove('hidden');
         return;
     }
+
+    // ترتيب الدفعات: الأحدث أولاً بدقة
+    payments.sort((a, b) => {
+        const timeA = new Date(a.created_at || a.date || 0).getTime();
+        const timeB = new Date(b.created_at || b.date || 0).getTime();
+        if (timeB !== timeA) return timeB - timeA;
+        return (b.id || '').localeCompare(a.id || '');
+    });
+
     payments.forEach(p => {
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50">
