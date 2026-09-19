@@ -680,6 +680,7 @@ async function handleBalanceTransferSubmit(event) {
         if (targetErr) throw targetErr;
 
         // 3. أرشفة الحركات في profits_archive كحركات رأس مال محايدة (بدون أرباح إضافية)
+        const nowIso = new Date().toISOString();
         await _supabase.from('profits_archive').insert([
             {
                 payment_id: sourcePayment.id,
@@ -688,7 +689,8 @@ async function handleBalanceTransferSubmit(event) {
                 ad_capital: sourceAmountDzd,
                 total_profit: 0,
                 company_profit: 0,
-                my_profit: 0
+                my_profit: 0,
+                created_at: nowIso
             },
             {
                 payment_id: targetPayment.id,
@@ -697,7 +699,8 @@ async function handleBalanceTransferSubmit(event) {
                 ad_capital: targetAmountDzd,
                 total_profit: 0,
                 company_profit: 0,
-                my_profit: 0
+                my_profit: 0,
+                created_at: nowIso
             }
         ]);
 
@@ -1022,7 +1025,8 @@ async function submitManualPayment(event) {
             myProfit = parseFloat((totalProfit * 0.70).toFixed(2));
         }
 
-        const timestampWithTime = `${paymentDate}T12:00:00Z`;
+        const nowTime = new Date().toISOString().split('T')[1];
+        const timestampWithTime = `${paymentDate}T${nowTime}`;
         const { error: arcErr } = await _supabase.from('profits_archive').insert([{
             payment_id: newPayment.id, client_name: clientName, amount_received: finalAmountDzd,
             ad_capital: adCapital, total_profit: totalProfit, company_profit: companyProfit,

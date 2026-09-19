@@ -1,7 +1,17 @@
 // ✅ بيانات Supabase الصحيحة
 window.SUPABASE_URL = window.SUPABASE_URL || "https://uljdazwcjxogpymvbflq.supabase.co";
 window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
-window._supabase = window._supabase || supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+{
+    const localUser = JSON.parse(localStorage.getItem('currentUser'));
+    const headers = {};
+    if (localUser && localUser.session_token) {
+        headers['x-session-token'] = localUser.session_token;
+    }
+    window._supabase = window._supabase || supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+        global: { headers }
+    });
+}
 
 // حساب نطاق التواريخ بناءً على الفلتر المختار
 function getDateRange(filterType) {
@@ -73,7 +83,9 @@ async function loadAnalyticsData() {
         query = query.gte('created_at', start).lte('created_at', end);
     }
 
-    const { data: records, error } = await query.order('created_at', { ascending: false });
+    const { data: records, error } = await query
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
 
     if (error) {
         console.error(error);
@@ -90,6 +102,14 @@ async function loadAnalyticsData() {
 
     noDataMsg.classList.add('hidden');
     tbody.innerHTML = '';
+
+    // ضمان ترتيب القائمة: الأحدث أولاً بدقة
+    records.sort((a, b) => {
+        const timeA = new Date(a.created_at || 0).getTime();
+        const timeB = new Date(b.created_at || 0).getTime();
+        if (timeB !== timeA) return timeB - timeA;
+        return (b.id || '').localeCompare(a.id || '');
+    });
 
     let totalReceived = 0;
     let totalCapital = 0;
