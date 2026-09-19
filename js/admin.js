@@ -863,10 +863,16 @@ window.openPaymentModal = async function () {
     const modal = document.getElementById('payment-modal');
     const select = document.getElementById('pop-client-select');
     document.getElementById('pop-payment-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('pop-payment-type').value = "ads";
     document.getElementById('pop-payment-note').value = "Versement";
     document.getElementById('pop-amount-dzd').value = "";
     document.getElementById('pop-amount-euro').value = "";
     document.getElementById('pop-exchange-rate').value = "";
+    
+    if (typeof handlePaymentTypeChange === 'function') {
+        handlePaymentTypeChange();
+    }
+
     select.innerHTML = '<option value="">-- جاري تحميل الزبائن... --</option>';
     try {
         const { data: clients, error } = await _supabase.from('clients').select('id, name, exchange_rate').order('name', { ascending: true });
@@ -883,6 +889,41 @@ window.openPaymentModal = async function () {
     } catch (e) {
         console.error("خطأ في جلب قائمة الزبائن:", e);
         select.innerHTML = '<option value="">❌ فشل تحميل الزبائن</option>';
+    }
+};
+
+window.handlePaymentTypeChange = function () {
+    const type = document.getElementById('pop-payment-type').value;
+    const submitBtn = document.getElementById('pop-submit-btn');
+    const noteInput = document.getElementById('pop-payment-note');
+    const modalHeader = document.getElementById('payment-modal-header');
+
+    if (type === 'debt') {
+        if (modalHeader) {
+            modalHeader.className = "bg-red-600 p-4 text-white text-center font-bold text-lg transition-colors";
+            modalHeader.innerText = "🔴 إضافة دين / رسوم خدمة على الزبون";
+        }
+        if (submitBtn) {
+            submitBtn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow cursor-pointer";
+            submitBtn.innerText = "🔴 تأكيد تسجيل الدين على الزبون";
+        }
+        if (noteInput && (noteInput.value === "Versement" || !noteInput.value)) {
+            noteInput.value = "شراء خدمة إضافية";
+            noteInput.placeholder = "مثال: شراء خدمة تصميم، مفتاح كانفا، إلخ...";
+        }
+    } else {
+        if (modalHeader) {
+            modalHeader.className = "bg-amber-500 p-4 text-white text-center font-bold text-lg transition-colors";
+            modalHeader.innerText = "💰 تسجيل دفعة مالية جديدة";
+        }
+        if (submitBtn) {
+            submitBtn.className = "w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow cursor-pointer";
+            submitBtn.innerText = "✅ حفظ وتوزيع الأرباح";
+        }
+        if (noteInput && (noteInput.value === "شراء خدمة إضافية" || !noteInput.value)) {
+            noteInput.value = "Versement";
+            noteInput.placeholder = "اكتب الملاحظة أو سبب الدين هنا...";
+        }
     }
 };
 
@@ -926,25 +967,38 @@ async function submitManualPayment(event) {
     const paymentType = document.getElementById('pop-payment-type').value;
     let paymentNote = document.getElementById('pop-payment-note').value.trim();
     
-    // إلحاق نوع الدفعة بالملاحظة للتوضيح المالي
-    let typeLabel = "شحن إعلانات";
-    if (paymentType === 'views') typeLabel = "شحن مشاهدات";
-    if (paymentType === 'services') typeLabel = "شحن شراء خدمات";
-    
-    if (!paymentNote) {
-        paymentNote = `Versement (${typeLabel})`;
-    } else {
-        paymentNote = `${paymentNote} (${typeLabel})`;
-    }
-
     if (!clientId || !amountDzd || isNaN(amountEuro) || !paymentDate) {
         alert("يرجى ملء الحقول الأساسية بشكل صحيح.");
         return;
     }
+
+    let finalAmountDzd = amountDzd;
+    let finalAmountEuro = amountEuro;
+
+    if (paymentType === 'debt') {
+        // الدين يحسب بالسالب في سجل المدفوعات لزيادة المستحقات
+        finalAmountDzd = -Math.abs(amountDzd);
+        finalAmountEuro = -Math.abs(amountEuro);
+        if (!paymentNote) {
+            paymentNote = 'دين إضافي / رسوم خدمة';
+        }
+    } else {
+        // إلحاق نوع الدفعة بالملاحظة للتوضيح المالي
+        let typeLabel = "شحن إعلانات";
+        if (paymentType === 'views') typeLabel = "شحن مشاهدات";
+        if (paymentType === 'services') typeLabel = "شحن شراء خدمات";
+        
+        if (!paymentNote) {
+            paymentNote = `Versement (${typeLabel})`;
+        } else {
+            paymentNote = `${paymentNote} (${typeLabel})`;
+        }
+    }
+
     try {
         const { data: newPayment, error: payErr } = await _supabase
             .from('payments')
-            .insert([{ client_id: clientId, amount_dzd: amountDzd, amount_euro: amountEuro, note: paymentNote, date: paymentDate }])
+            .insert([{ client_id: clientId, amount_dzd: finalAmountDzd, amount_euro: finalAmountEuro, note: paymentNote, date: paymentDate }])
             .select().single();
         if (payErr) throw payErr;
 
@@ -955,7 +1009,7 @@ async function submitManualPayment(event) {
         }
 
         // احتساب الأرباح حسب نوع الدفعة
-        let adCapital = amountDzd;
+        let adCapital = finalAmountDzd;
         let totalProfit = 0;
         let companyProfit = 0;
         let myProfit = 0;
@@ -970,12 +1024,17 @@ async function submitManualPayment(event) {
 
         const timestampWithTime = `${paymentDate}T12:00:00Z`;
         const { error: arcErr } = await _supabase.from('profits_archive').insert([{
-            payment_id: newPayment.id, client_name: clientName, amount_received: amountDzd,
+            payment_id: newPayment.id, client_name: clientName, amount_received: finalAmountDzd,
             ad_capital: adCapital, total_profit: totalProfit, company_profit: companyProfit,
             my_profit: myProfit, created_at: timestampWithTime
         }]);
         if (arcErr) throw arcErr;
-        showSuccessNotification(`تم الحفظ (${typeLabel}): ${amountDzd.toLocaleString('fr-FR')} دج`);
+
+        if (paymentType === 'debt') {
+            showSuccessNotification(`تم تسجيل دين إضافي بقيمة: ${amountDzd.toLocaleString('fr-FR')} دج على حساب (${clientName})`);
+        } else {
+            showSuccessNotification(`تم الحفظ بنجاح: ${amountDzd.toLocaleString('fr-FR')} دج`);
+        }
         closePaymentModal();
         if (typeof loadAdminData === 'function') loadAdminData();
         if (typeof loadAnalyticsData === 'function') loadAnalyticsData();

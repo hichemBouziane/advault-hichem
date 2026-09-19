@@ -1134,7 +1134,7 @@
     <div id="payment-modal"
         class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
-            <div class="bg-amber-500 p-4 text-white text-center font-bold text-lg">
+            <div id="payment-modal-header" class="bg-amber-500 p-4 text-white text-center font-bold text-lg transition-colors">
                 💰 تسجيل دفعة مالية جديدة
             </div>
             <form id="manual-payment-form" onsubmit="submitManualPayment(event)" class="p-6 space-y-4">
@@ -1146,12 +1146,13 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-1">نوع الدفعة المضافة:</label>
-                    <select id="pop-payment-type" required
+                    <label class="block text-gray-700 text-sm font-bold mb-1">نوع العملية المالية:</label>
+                    <select id="pop-payment-type" required onchange="handlePaymentTypeChange()"
                         class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer font-bold">
                         <option value="ads">📈 دفعة إعلانات (فائدة 20% مقتطعة)</option>
                         <option value="views">📺 دفعة مشاهدات (بدون فائدة حالياً)</option>
                         <option value="services">🛍️ دفعة ملء الحساب لشراء خدمات (بدون فائدة)</option>
+                        <option value="debt">🔴 إضافة دين / رسوم خدمة إضافية (تحسب بالسالب -)</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
@@ -1172,17 +1173,17 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-1">تاريخ الدفعة:</label>
+                    <label class="block text-gray-700 text-sm font-bold mb-1">تاريخ الدفعة / تسجيل الدين:</label>
                     <input type="date" id="pop-payment-date" required
                         class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-center">
                 </div>
                 <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-1">ملاحظة الدفعة:</label>
-                    <input type="text" id="pop-payment-note" value="Versement"
+                    <label class="block text-gray-700 text-sm font-bold mb-1">سبب أو ملاحظة العملية:</label>
+                    <input type="text" id="pop-payment-note" value="Versement" placeholder="اكتب الملاحظة أو سبب الدين هنا..."
                         class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
                 </div>
                 <div class="flex gap-3 pt-2">
-                    <button type="submit"
+                    <button type="submit" id="pop-submit-btn"
                         class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow cursor-pointer">
                         ✅ حفظ وتوزيع الأرباح
                     </button>
