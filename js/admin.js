@@ -2414,14 +2414,10 @@ async function saveAdminTelegramChatId() {
 
         user.telegram_chat_id = chatId;
         localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('admin_tg_chat_id', chatId);
 
         // إرسال تنبيه تجريبي عبر البوت للأدمن
-        try {
-            await _supabase.rpc('secure_send_telegram', {
-                p_message: "🎉 تم ربط حساب الإدارة في AdVault بنجاح! ستصلك إشعارات وتنبيهات شحن الرصيد والنزاعات هنا فوراً.",
-                p_chat_id: chatId
-            });
-        } catch (_) {}
+        await sendAdminTelegramNotification("🎉 تم ربط حساب الإدارة في AdVault بنجاح! ستصلك إشعارات وتنبيهات شحن الرصيد وفواتير فيسبوك هنا فوراً.");
 
         alert("تم حفظ معرف التليجرام وإرسال رسالة تأكيد بنجاح! 🏆");
     } catch (e) {
@@ -2429,6 +2425,44 @@ async function saveAdminTelegramChatId() {
         alert("حدث خطأ أثناء حفظ معرف التليجرام.");
     }
 }
+
+// ==========================================
+//  دالة موثوقة وشاملة لإرسال إشعارات الأدمن على تليجرام
+// ==========================================
+async function sendAdminTelegramNotification(message) {
+    const adminChatId = localStorage.getItem('admin_tg_chat_id') || user?.telegram_chat_id || "1746721547";
+    const BOT_TOKEN = "8636070898:AAFA5OZwJ81WqVvC9TfaudmOjLKV4r43tcM";
+
+    // 1. محاولة الإرسال الأولى عبر RPC
+    try {
+        const { data, error } = await _supabase.rpc('secure_send_telegram', {
+            p_message: message,
+            p_chat_id: adminChatId
+        });
+        if (!error && data && data.ok) {
+            console.log("✅ تم إرسال تنبيه تليجرام للأدمن بنجاح عبر RPC.");
+            return true;
+        }
+    } catch (e) {
+        console.warn("RPC Telegram alert failed, falling back to direct fetch:", e);
+    }
+
+    // 2. إرسال احتياطي مباشر عبر fetch لضمان وصول الرسالة 100%
+    try {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${adminChatId}&text=${encodeURIComponent(message)}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.ok) {
+            console.log("✅ تم إرسال تنبيه تليجرام للأدمن بنجاح عبر Direct Fetch.");
+            return true;
+        }
+    } catch (e) {
+        console.error("Direct Telegram fetch failed:", e);
+    }
+    return false;
+}
+
+window.sendAdminTelegramNotification = sendAdminTelegramNotification;
 
 // ==========================================
 //  نظام تنبيهات فوترة فيسبوك وسحب الرصيد على تليجرام
@@ -2460,19 +2494,13 @@ async function saveFbBillingSettings() {
     if (threshold) localStorage.setItem('fb_billing_threshold', threshold);
 
     showToast("تم حفظ إعدادات تنبيهات فوترة فيسبوك بنجاح! 💳");
-    alert("✅ تم حفظ إعدادات الفوترة بنجاح. سيتولى النظام إرسال التنبيهات تلقائياً عبر تليجرام عند بلوغ 90% أو عند حلول يوم الفوترة.");
+    alert("✅ تم حفظ إعدادات الفوترة بنجاح. سيتولى النظام إرسال التنبيهات تلقائياً عبر تليجرام عند اقتراب السحب أو عند حلول يوم الفوترة.");
 
     // إعادة فحص الرصيد فوراً
     fetchHeaderBalance();
 }
 
 async function testFbBillingAlert() {
-    const adminChatId = user?.telegram_chat_id || localStorage.getItem('admin_tg_chat_id');
-    if (!adminChatId) {
-        alert("⚠️ يرجى ربط وحفظ معرّف التليجرام الخاص بك أولاً في كارت إشعارات التليجرام.");
-        return;
-    }
-
     const day = localStorage.getItem('fb_billing_day') || document.getElementById('fb-billing-day-input')?.value || 'غير محدد';
     const threshold = parseFloat(localStorage.getItem('fb_billing_threshold') || document.getElementById('fb-threshold-input')?.value || '292');
     const fbSpendEl = document.getElementById('fb-current-spend');
@@ -2485,27 +2513,24 @@ async function testFbBillingAlert() {
 
 📅 يوم الفوترة المحدد: ${day} من كل شهر
 📊 عتبة الفوترة القصوى: $${threshold}
-⚠️ عتبة تنبيه الـ 90%: عند تجاوز $${(threshold * 0.9).toFixed(2)}
+⚠️ عتبة تنبيه الخطر: عند تجاوز $${(threshold * 0.85).toFixed(2)}
 💳 الاستهلاك الحالي المسجل: $${currentSpend}
 
 🔔 ستصلك التنبيهات التلقائية عند اقتراب سحب فيسبوك للمال أو عند حلول يوم الفوترة لتفادي توقف الإعلانات.`;
 
-        await _supabase.rpc('secure_send_telegram', {
-            p_message: testMsg,
-            p_chat_id: adminChatId
-        });
-
-        alert("🚀 تم إرسال رسالة الفحص التجريبي بنجاح إلى حسابك على تليجرام! تفقد البوت الآن.");
+        const sent = await sendAdminTelegramNotification(testMsg);
+        if (sent) {
+            alert("🚀 تم إرسال رسالة الفحص التجريبي بنجاح إلى حسابك على تليجرام! تفقد البوت الآن.");
+        } else {
+            alert("❌ تعذر إرسال التنبيه التجريبي عبر تليجرام. تأكد من اتصال الإنترنت أو تشغيل البوت.");
+        }
     } catch (e) {
         console.error("Test telegram alert failed:", e);
-        alert("❌ تعذر إرسال التنبيه التجريبي عبر تليجرام. تأكد من صحة معرّف Chat ID ومن تشغيل البوت.");
+        alert("❌ تعذر إرسال التنبيه التجريبي عبر تليجرام.");
     }
 }
 
 async function checkAndSendFacebookBillingAlerts(currentSpend, maxThreshold, percentage) {
-    const adminChatId = user?.telegram_chat_id || localStorage.getItem('admin_tg_chat_id');
-    if (!adminChatId) return; // لا يوجد تليجرام مسجل للأدمن
-
     const fbBillingDay = parseInt(localStorage.getItem('fb_billing_day') || document.getElementById('fb-billing-day-input')?.value || '0');
     const todayDate = new Date();
     const todayDay = todayDate.getDate();
@@ -2524,11 +2549,7 @@ async function checkAndSendFacebookBillingAlerts(currentSpend, maxThreshold, per
 
 ⚠️ يرجى التأكد من توفر الرصيد الكافي في البطاقة المصرفية لتجنب فشل السحب وتوقف إعلانات الزبائن المفاجئ.`;
 
-                await _supabase.rpc('secure_send_telegram', {
-                    p_message: dayMsg,
-                    p_chat_id: adminChatId
-                });
-
+                await sendAdminTelegramNotification(dayMsg);
                 localStorage.setItem(dayAlertKey, 'true');
                 console.log("✅ تم إرسال تنبيه يوم الفوترة للأدمن عبر تليجرام بنجاح.");
             } catch (err) {
@@ -2537,32 +2558,27 @@ async function checkAndSendFacebookBillingAlerts(currentSpend, maxThreshold, per
         }
     }
 
-    // 2. الحالة الثانية: وصول الاستهلاك إلى 90% أو أكثر من إجمالي العتبة القصوى
-    if (percentage >= 90) {
-        // مفتاح تنبيه الـ 90% لمنع التكرار المزعج في نفس اليوم لنفس مستوى الصرف
+    // 2. الحالة الثانية: وصول الاستهلاك إلى 85% أو أكثر من إجمالي العتبة القصوى (اقتراب الفوترة)
+    if (percentage >= 85) {
         const spendBucket = Math.floor(currentSpend / 5) * 5; // يتغير كل 5 دولار زيادة
-        const thresholdAlertKey = `fb_90_alert_sent_${todayDateStr}_${spendBucket}`;
+        const thresholdAlertKey = `fb_threshold_alert_sent_${todayDateStr}_${spendBucket}`;
         
         if (!localStorage.getItem(thresholdAlertKey)) {
             try {
                 const remaining = Math.max(0, maxThreshold - currentSpend);
-                const alert90Msg = `⚠️ [تحذير عاجل: استهلاك ${percentage.toFixed(1)}% من عتبة فيسبوك!]
+                const alertThresholdMsg = `⚠️ [تحذير عاجل: استهلاك ${percentage.toFixed(1)}% من عتبة فيسبوك!]
 ━━━━━━━━━━━━━━━━━━
-🚨 وصل استهلاك الإعلانات إلى 90%+ من حد الفوترة الإجمالي!
+🚨 وصل استهلاك الإعلانات إلى ${percentage.toFixed(1)}% من حد الفوترة الإجمالي!
 💳 الاستهلاك الحالي: $${currentSpend.toFixed(2)} / $${maxThreshold}
-🔋 المتبقي للوصول للعتبة القصوى: $${remaining.toFixed(2)} فقط.
+🔋 المتبقي للوصول للعتبة وسحب الرصيد: $${remaining.toFixed(2)} فقط.
 
-📌 سيقوم فيسبوك بسحب المبلغ من البطاقة قريباً جداً، يرجى شحن البطاقة فوراً لضمان استمرار الحملات النشطة دون توقف.`;
+📌 سيقوم فيسبوك بسحب المبلغ من البطاقة قريباً جداً، يرجى التأكد من شحن البطاقة فوراً لضمان استمرار الحملات النشطة دون انقطاع.`;
 
-                await _supabase.rpc('secure_send_telegram', {
-                    p_message: alert90Msg,
-                    p_chat_id: adminChatId
-                });
-
+                await sendAdminTelegramNotification(alertThresholdMsg);
                 localStorage.setItem(thresholdAlertKey, 'true');
-                console.log("✅ تم إرسال تحذير الـ 90% للأدمن عبر تليجرام بنجاح.");
+                console.log("✅ تم إرسال تحذير اقتراب الفوترة للأدمن عبر تليجرام بنجاح.");
             } catch (err) {
-                console.error("فشل إرسال تحذير الـ 90% عبر تليجرام:", err);
+                console.error("فشل إرسال تحذير اقتراب الفوترة عبر تليجرام:", err);
             }
         }
     }
