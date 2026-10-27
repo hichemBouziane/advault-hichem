@@ -19,14 +19,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: ☕ Setup Java JDK 17 (Required for Android Build)
+      - name: ☕ Setup Java JDK 21 (Required for Capacitor 6+ Android Build)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
-
-      - name: 🤖 Setup Android SDK
-        uses: android-actions/setup-android@v3
+          java-version: '21'
 
       - name: 📦 Prepare Web Assets & Capacitor Project
         run: |
