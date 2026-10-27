@@ -59,6 +59,11 @@
                 class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer">
                 🛍️ طلبات الخدمات
             </button>
+            <button onclick="switchTab('disputes')" id="tab-disputes-btn"
+                class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer flex items-center gap-1.5">
+                ⚠️ النزاعات والتبليغات المعلقة
+                <span id="disputes-tab-badge" class="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full hidden">0</span>
+            </button>
         </div>
 
         <!-- بطاقة العرض الرئيسي -->
@@ -158,6 +163,99 @@
                     </table>
                 </div>
             </div>
+
+            <!-- قسم النزاعات والتبليغات -->
+            <div id="disputes-section" class="hidden">
+                <div class="px-6 py-5 border-b border-gray-100 bg-red-50/50 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-bold text-red-800">النزاعات والاعتراضات المعلقة</h2>
+                        <p class="text-xs text-gray-400 mt-0.5">يرجى مراجعة سبب الاعتراض والتواصل مع الأطراف ثم اتخاذ القرار المناسب لحل النزاع.</p>
+                    </div>
+                    <span id="disputes-count-badge" class="bg-red-600 text-white text-xs font-black px-2.5 py-1 rounded-full">0 نزاعات</span>
+                </div>
+
+                <!-- جدول النزاعات -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                            <tr>
+                                <th class="p-4 font-bold">الزبون</th>
+                                <th class="p-4 font-bold">الشريك</th>
+                                <th class="p-4 font-bold">الخدمة</th>
+                                <th class="p-4 font-bold">سبب الاعتراض</th>
+                                <th class="p-4 font-bold text-center">المبلغ ($)</th>
+                                <th class="p-4 font-bold text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pending-disputes-table" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="6" class="p-8 text-center text-gray-400 font-bold">لا توجد نزاعات معلقة حالياً.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ===== نافذة حل النزاع واتخاذ القرار (Resolve Dispute Modal) ===== -->
+            <div id="resolve-dispute-modal" class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity">
+                <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden text-right">
+                    <div class="bg-gradient-to-br from-red-600 to-indigo-600 p-5 text-white flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl">⚖️</span>
+                            <h3 class="font-bold text-base">اتخاذ قرار وحل النزاع</h3>
+                        </div>
+                        <button onclick="closeResolveDisputeModal()" class="text-white/80 hover:text-white text-2xl font-bold cursor-pointer">&times;</button>
+                    </div>
+                    
+                    <div class="p-6 space-y-4">
+                        <input type="hidden" id="resolve-dispute-req-id">
+                        <input type="hidden" id="resolve-dispute-price">
+                        <input type="hidden" id="resolve-dispute-provider-id">
+                        <input type="hidden" id="resolve-dispute-client-id">
+                        <input type="hidden" id="resolve-dispute-service-title">
+                        
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-2">اختر الإجراء المناسب لتسوية النزاع:</label>
+                            <div class="space-y-3">
+                                <label class="flex items-center gap-3 bg-slate-50 hover:bg-slate-100 p-3 rounded-xl border border-gray-150 cursor-pointer transition">
+                                    <input type="radio" name="resolve-action" value="accept" checked class="accent-indigo-600 h-4 w-4">
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-800 block">✅ قبول تسليم العمل وصرف المستحقات للشريك</span>
+                                        <span class="text-[10px] text-gray-400">سيتم تحويل حالة الطلب إلى مكتمل ونقل الأرباح للشريك.</span>
+                                    </div>
+                                </label>
+                                
+                                <label class="flex items-center gap-3 bg-slate-50 hover:bg-slate-100 p-3 rounded-xl border border-gray-150 cursor-pointer transition">
+                                    <input type="radio" name="resolve-action" value="redo" class="accent-indigo-600 h-4 w-4">
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-800 block">🔁 إرجاع المشروع للشريك لإعادة العمل والتعديل</span>
+                                        <span class="text-[10px] text-gray-400">سيتم إعادة حالة الطلب إلى "قيد العمل" ليقوم الشريك بتعديله وتصحيحه.</span>
+                                    </div>
+                                </label>
+                                
+                                <label class="flex items-center gap-3 bg-slate-50 hover:bg-slate-100 p-3 rounded-xl border border-gray-150 cursor-pointer transition">
+                                    <input type="radio" name="resolve-action" value="refund" class="accent-indigo-600 h-4 w-4">
+                                    <div>
+                                        <span class="text-xs font-bold text-red-650 block">❌ رفض تسليم العمل وإرجاع الأموال للزبون</span>
+                                        <span class="text-[10px] text-gray-400">سيتم رفض الطلب كلياً وإلغاء حجز المبلغ ليعود لرصيد الزبون المتاح.</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 flex gap-3">
+                            <button onclick="submitDisputeResolution()"
+                                class="flex-1 bg-gradient-to-r from-red-600 to-indigo-600 hover:from-red-700 hover:to-indigo-700 text-white font-bold py-3 rounded-xl transition cursor-pointer text-center text-sm shadow-md">
+                                ⚖️ تطبيق القرار وإغلاق النزاع
+                            </button>
+                            <button onclick="closeResolveDisputeModal()"
+                                class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 px-5 rounded-xl transition cursor-pointer text-center text-sm">
+                                إلغاء
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </main>
@@ -201,14 +299,6 @@
                     <label class="block text-xs font-bold text-gray-600 mb-1">سعر الصرف الافتراضي (دج مقابل الدولار)</label>
                     <input type="number" id="activate-rate" value="230"
                         class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition">
-                </div>
-
-                <!-- Custom Password -->
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 mb-1">كلمة المرور للحساب</label>
-                    <input type="text" id="activate-password" placeholder="حدد كلمة سر الدخول"
-                        class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 transition">
-                    <p class="text-[10px] text-gray-400 mt-1">تم ضبطها تلقائياً على رقم هاتف الزبون للتسهيل.</p>
                 </div>
 
                 <!-- Hidden Input to store Client ID -->

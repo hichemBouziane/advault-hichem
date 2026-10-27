@@ -1,0 +1,93 @@
+- [x] Create recharge.html separate page
+- [x] Create js/recharge.js for page control
+- [x] Remove modal from client.html
+- [x] Update js/client.js redirection logic
+- [x] Sync changes to New folder
+- [x] Add password field to register.html and sync
+- [x] Change disabled button in admin.html to client management button
+- [x] Create manage-clients-modal in admin.html
+- [x] Add functions in js/admin.js for editing and deleting clients (cascading deletes for payments/requests)
+- [x] Fix empty client list dropdown select by populating window.allClients globally
+- [x] Verify campaigns/ads are NOT deleted when deleting client
+- [x] Add USD balance column to admin clients table and sync
+- [x] Add remaining ad days column to admin clients table (balance / $6) and sync
+- [x] Write insert_payments.sql to batch insert 37 payments and sync
+- [x] Write insert_payments_2.sql to batch insert 17 payments for second client and sync
+- [x] Write transfer_partners.sql to transfer balance from Adlan to Fares Rahim and sync
+- [x] Add visitor stats time filter to admin-analytics.html and admin-analytics.js (Today, Week, Month, All) and sync
+- [x] Import Chart.js in admin.html
+- [x] Create line chart for annual profits and bar chart for client spending in admin.html and js/admin.js and sync
+- [x] Import Chart.js in admin-analytics.html
+- [x] Create line chart for hourly visits and bar chart for weekly visits in admin-analytics.html and js/admin-analytics.js and sync
+- [x] Add pricing Tab Selection in index.html (Sales vs Views Tiers) and sync
+- [x] Add views pricing tiers (Silver, Gold, Diamond) with exact values in index.html and sync
+- [x] Add Islamic compliance alert warning block to index.html and sync
+- [x] Correct views pricing values and add days count in parentheses for all packages in index.html and sync
+- [x] Create navigation sidebar drawer in client.html and js/client.js and sync
+- [x] Add Subscriptions tab view to client.html with Silver, Gold, Diamond package buttons and sync
+- [x] Code requestSubscription logic in js/client.js (balance checks, service_requests insertion, telegram notification, success toast) and sync
+- [x] Add show_campaigns_table and show_payments_table columns SQL schema and sync
+- [x] Add settings button to admin sidebar and create table visibility control modal in admin.html
+- [x] Write openSettingsModal and saveClientsSettings functions in js/admin.js
+- [x] Dynamic campaigns and payments tables hide/show on client dashboard based on permissions and sync
+- [x] Pin admin sidebar to the right side on desktop (fixed layout) and hide hamburger icon on desktop in admin.html
+- [x] Place settings and logout buttons at the bottom of the fixed sidebar in admin.html
+- [x] Replace settings popup modal with an in-page settings center using responsive cards (squares) in admin.html and js/admin.js and sync
+- [x] Implement standard HTML form structure and autocomplete properties in register.html for Chrome password manager prompts and sync
+- [x] Create pending.html separate page for unapproved client accounts with WhatsApp contact CTA button and sync
+- [x] Redirect users with pending status to pending.html page during login in js/index.js and sync
+- [x] Default new client settings to hide campaigns table (show_campaigns_table: false) and show payments table (show_payments_table: true) upon registration and approval, and sync
+- [x] Extract login modal into a dedicated login.html page, remove modal states from index.html, update redirection links and sync
+- [x] Add custom WhatsApp phone field to services database schema, admin panels, and client redirection pages
+- [x] Implement multivendor service provider dashboards, admin approval screens, SQL schemas, and wallet payout processes
+- [x] Align Telegram notification message format for service and subscription requests with requested template
+- [x] Align Telegram notification message format for new vendor-submitted services with requested template
+- [x] Implement serverless client-side Telegram Bot linking for service providers and route instant order notifications directly to linked providers
+- [x] Secure password storage using SHA-256 client-side hashing on registration and login with backward compatibility
+- [x] Hide client passwords from admin pending activation screen and customer manager modals to prevent credential exposure
+- [x] Correct Telegram Bot token and Chat ID mismatch in js/provider.js and js/client.js for Admin notifications
+- [x] Deduct requested services budget from client's available balance to temporarily lock funds (Escrow)
+- [x] Render client's balance card showing DZD and USD side-by-side using dynamic conversion
+- [x] Adjust default exchange rate for new accounts and calculations to 260 DZD instead of 230/240
+- [x] Append disputes count to admin notification bell and create "Pending Disputes" manager table inside admin.html and js/admin.js
+- [x] Add pending/locked revenue tracking metrics card to provider dashboard in provider.html and js/provider.js
+- [x] Replace simple statistics label with 4 detailed provider analytics cards in admin.html
+- [x] Create service reviews table schema and stars feedback modal in client.html, js/client.js, and js/services.js
+- [x] Integrate disputes tab and badge in pending-requests.html center linked to the bell notification icon
+- [x] Create resolve-dispute-modal options (Accept delivery, Redo work, Refund client) in pending-requests.html and js/pending-requests.js
+- [x] Add payment type dropdown (Ads 20% Fee vs Views 0% vs Services 0%) in admin manual payment modal and update calculation logic in js/admin.js
+- [x] Create custom reject-payout-modal to completely replace native browser prompt dialogs in admin.html and js/admin.js
+- [x] Rename chat.html to inbox.html and js/chat.js to js/inbox.js to bypass InfinityFree WAF / ModSecurity keyword filters
+- [x] Add personal settings center for all three account roles (Admin, Client, Provider) containing Telegram Bot linking status and password change fields
+- [x] Remove WhatsApp redirect block upon client service request completion in js/services.js
+- [x] Add provider RedotPay ID field in provider settings screen and render it in admin tables inside provider.html, js/provider.js and js/admin.js
+- [x] Remove WhatsApp number and template message fields when adding/editing services for both provider and admin
+- [x] Create public Supabase storage bucket vault-attachments with 50MB file size limit for chat attachments and final project deliveries
+- [x] Implement in-chat file attachment and real-time media rendering (images/videos/downloadable document cards) in inbox.html and js/inbox.js
+- [x] Implement official work delivery form (file upload,Notes, delivered status) in provider.html and js/provider.js
+- [x] Implement final delivery proof review, download, approval, and dispute triggers on client side in client.html and js/client.js
+- [x] Implement automatic chat redirection, default message 'السلام عليكم' insertion, and 4-second success toast notification upon requesting a service
+- [x] Connect alternative recharge agents contact button directly to RedotPay recharge service request and auto-redirect to internal chat
+- [x] Fix provider dashboard statistics discrepancies by calculating total, completed, and rejected requests dynamically in real-time
+- [x] Route startAgreement, startWork, submitWorkDelivery, and submitReject Telegram notifications directly to the client's chat ID if linked
+- [x] Fix client rating submission failure by validating UUID formatting and handling non-linked service IDs correctly
+- [x] Implement micro ERP company expenses register and net profit calculation metrics in admin.html, js/admin.js, and create_company_expenses_table.sql
+- [x] Create company debts tracker database schema, forms, metrics, and expenses analytics comparison charts (Current vs Last Month, category pie charts) in admin.html, js/admin.js, and create_company_debts_table.sql
+- [x] Secure database transactional math and lock/unlock funds securely using Supabase SQL database triggers in create_financial_triggers.sql and js files
+- [x] Secure authentication flow and verify admin role checks server-side on DOM load using verify_user_login and verify_session_role RPCs in secure_login_system.sql
+- [x] Secure database tables and isolate client information by enabling Row Level Security (RLS) policies and verifying sessions via custom HTTP header x-session-token in lockdown_database_rls.sql and client-side JS config
+- [x] Build ledger-based wallet transaction history tables and auto-record credits/debits via server triggers in create_wallet_transactions.sql, client.html, and js/client.js
+- [x] Hide and secure Telegram bot token by routing notifications via server-side secure_send_telegram RPC in secure_telegram.sql and JS files
+- [x] Create company vaults and ledger tables schema (caisse, card, personal) in create_company_vaults.sql
+- [x] Integrate vaults manager view panel, cards, and transaction forms in admin.html
+- [x] Write backend JS logic to load vaults, process purchase, spend, and personal withdrawals in js/admin.js
+- [x] Integrate automation: recharge approval feeds DZD company/personal balances, company expenses deduct DZD company balance in pending-requests.js and js/admin.js
+- [x] Create support tickets database schema and RLS policies in create_support_tickets.sql
+- [x] Build client support center tab and ticket forms in client.html, js/client.js
+- [x] Build admin support center dashboard tab and replies form in admin.html, js/admin.js
+- [x] Integrate PDF invoicing generator using jsPDF in client.html, js/client.js
+- [x] Integrate CSV export for vault ledger in admin.html, js/admin.js
+- [x] Build charts and performance analytics for partners using Chart.js in provider.html, js/provider.js
+
+
+

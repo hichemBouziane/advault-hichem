@@ -3,21 +3,68 @@
 // ==========================================
 const SUPABASE_URL = "https://uljdazwcjxogpymvbflq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const localUser = JSON.parse(localStorage.getItem('currentUser'));
+const headers = {};
+if (localUser && localUser.session_token) {
+    headers['x-session-token'] = localUser.session_token;
+}
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers }
+});
 
 // ==========================================
 //  تهيئة الصفحة
 // ==========================================
 let adminUser;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     adminUser = JSON.parse(localStorage.getItem('currentUser'));
     if (!adminUser || adminUser.role !== 'admin') {
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
         return;
     }
+
+    // التحقق الفوري من رتبة المستخدم في السيرفر لمنع تزوير جلسات الدخول
+    try {
+        const { data: isValid, error: roleErr } = await _supabase.rpc('verify_session_role', {
+            p_user_id: adminUser.id,
+            p_expected_role: 'admin'
+        });
+        if (roleErr || !isValid) {
+            localStorage.removeItem('currentUser');
+            window.location.href = 'login.html';
+            return;
+        }
+    } catch (_) {
+        localStorage.removeItem('currentUser');
+        window.location.href = 'login.html';
+        return;
+    }
+
     loadPendingRequests();
+    checkDisputesBadge();
 });
+
+async function checkDisputesBadge() {
+    try {
+        const { count } = await _supabase
+            .from('service_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'disputed');
+        const badge = document.getElementById('disputes-tab-badge');
+        if (badge) {
+            if (count > 0) {
+                badge.innerText = count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
 
 // ==========================================
 //  جلب وعرض الطلبات المعلقة
@@ -113,8 +160,7 @@ function openActivationModal(id, name, phone, niche) {
     document.getElementById('activate-name').value = name;
     document.getElementById('activate-phone').value = phone;
     document.getElementById('activate-keyword').value = niche; // الاقتراح الأولي
-    document.getElementById('activate-password').value = phone; // كلمة مرور افتراضية تسهيلاً للتسجيل
-    document.getElementById('activate-rate').value = 230; // القيمة الافتراضية
+    document.getElementById('activate-rate').value = 260; // القيمة الافتراضية 260 دج
     
     document.getElementById('activation-modal').classList.remove('hidden');
 }
@@ -128,9 +174,8 @@ async function submitActivation() {
     const name = document.getElementById('activate-name').value;
     const keyword = document.getElementById('activate-keyword').value.trim();
     const rate = document.getElementById('activate-rate').value.trim();
-    const password = document.getElementById('activate-password').value.trim();
 
-    if (!keyword || !rate || !password) {
+    if (!keyword || !rate) {
         showToast("يرجى ملء جميع الحقول المطلوبة للتفعيل", "error");
         return;
     }
@@ -142,7 +187,8 @@ async function submitActivation() {
                 role: 'client',
                 campaign_keyword: keyword,
                 exchange_rate: parseInt(rate),
-                password: password
+                show_campaigns_table: false, // لا يرى جدول الإعلانات افتراضياً
+                show_payments_table: true // يرى جدول الدفعات افتراضياً
             })
             .eq('id', id);
 
@@ -237,16 +283,19 @@ function switchTab(tab) {
     const regBtn = document.getElementById('tab-registrations-btn');
     const depBtn = document.getElementById('tab-deposits-btn');
     const srvBtn = document.getElementById('tab-services-btn');
+    const dspBtn = document.getElementById('tab-disputes-btn');
+    
     const regSec = document.getElementById('registrations-section');
     const depSec = document.getElementById('deposits-section');
     const srvSec = document.getElementById('services-section');
+    const dspSec = document.getElementById('disputes-section');
     
     // إعادة تعيين أزرار التبويبات
-    [regBtn, depBtn, srvBtn].forEach(btn => {
-        if (btn) btn.className = "px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer";
+    [regBtn, depBtn, srvBtn, dspBtn].forEach(btn => {
+        if (btn) btn.className = "px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition cursor-pointer flex items-center gap-1.5";
     });
     // إخفاء جميع الأقسام
-    [regSec, depSec, srvSec].forEach(sec => {
+    [regSec, depSec, srvSec, dspSec].forEach(sec => {
         if (sec) {
             sec.classList.remove('block');
             sec.classList.add('hidden');
@@ -254,20 +303,25 @@ function switchTab(tab) {
     });
     
     if (tab === 'registrations') {
-        regBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer";
+        regBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer flex items-center gap-1.5";
         regSec.classList.remove('hidden');
         regSec.classList.add('block');
         loadPendingRequests();
     } else if (tab === 'deposits') {
-        depBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer";
+        depBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer flex items-center gap-1.5";
         depSec.classList.remove('hidden');
         depSec.classList.add('block');
         loadPendingDeposits();
     } else if (tab === 'services') {
-        srvBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer";
+        srvBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer flex items-center gap-1.5";
         srvSec.classList.remove('hidden');
         srvSec.classList.add('block');
         loadPendingServices();
+    } else if (tab === 'disputes') {
+        dspBtn.className = "px-5 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 transition cursor-pointer flex items-center gap-1.5";
+        dspSec.classList.remove('hidden');
+        dspSec.classList.add('block');
+        loadPendingDisputes();
     }
 }
 
@@ -411,6 +465,49 @@ async function approveDeposit(id, clientId, clientName, amountUsd, amountDzd) {
             
         if (arcErr) console.error("فشل ترحيل الأرباح للدفعة المقبولة:", arcErr);
         
+        // 4. تحديث تلقائي للخزائن الثلاث وحركات الخزينة
+        try {
+            const { data: vault } = await _supabase
+                .from('company_vaults')
+                .select('*')
+                .eq('id', '00000000-0000-0000-0000-000000000000')
+                .maybeSingle();
+
+            if (vault) {
+                const addCompany = adCapital + companyProfit;
+                const addPersonal = myProfit;
+
+                await _supabase
+                    .from('company_vaults')
+                    .update({
+                        company_dzd_balance: parseFloat(vault.company_dzd_balance || 0) + addCompany,
+                        my_dzd_balance: parseFloat(vault.my_dzd_balance || 0) + addPersonal,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', '00000000-0000-0000-0000-000000000000');
+
+                // تسجيل حركة الخزينة للشركة وللأدمن
+                await _supabase
+                    .from('vault_ledger')
+                    .insert([
+                        {
+                            vault_type: 'company',
+                            action_type: 'recharge_income',
+                            amount_dzd: addCompany,
+                            notes: `شحن للزبون (${clientName}) - رأس مال ${adCapital} دج + أرباح 30% تعادل ${companyProfit} دج`
+                        },
+                        {
+                            vault_type: 'personal',
+                            action_type: 'recharge_income',
+                            amount_dzd: addPersonal,
+                            notes: `أرباح 70% للزبون (${clientName})`
+                        }
+                    ]);
+            }
+        } catch (eVault) {
+            console.error("Failed to auto-update vaults on approval:", eVault);
+        }
+
         showToast(`تم قبول الدفع وإضافة $${amountUsd} بنجاح لحساب (${clientName})!`, "success");
         loadPendingDeposits();
         
@@ -618,3 +715,195 @@ async function rejectService(id, clientName, serviceTitle) {
 }
 
 window.rejectService = rejectService;
+
+// ==========================================
+//  نظام النزاعات والاعتراضات (حل النزاع للأدمن)
+// ==========================================
+async function loadPendingDisputes() {
+    const tableBody = document.getElementById('pending-disputes-table');
+    const badge = document.getElementById('disputes-count-badge');
+    
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="6" class="p-8 text-center text-gray-400 font-bold">جاري تحميل النزاعات...</td>
+        </tr>
+    `;
+    
+    try {
+        const { data: requests, error } = await _supabase
+            .from('service_requests')
+            .select('*')
+            .eq('status', 'disputed')
+            .order('created_at', { ascending: false });
+            
+        if (error) throw error;
+        
+        badge.innerText = `${requests.length} نزاعات`;
+        
+        const dspBadge = document.getElementById('disputes-tab-badge');
+        if (dspBadge) {
+            if (requests.length > 0) {
+                dspBadge.innerText = requests.length;
+                dspBadge.classList.remove('hidden');
+            } else {
+                dspBadge.classList.add('hidden');
+            }
+        }
+        
+        if (requests.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="p-8 text-center text-gray-400 font-bold">🎉 لا توجد أي نزاعات نشطة حالياً.</td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // جلب مقدمي الخدمات للتواصل
+        const { data: partners } = await _supabase
+            .from('clients')
+            .select('id, name, phone');
+
+        tableBody.innerHTML = '';
+        requests.forEach(req => {
+            const date = new Date(req.created_at);
+            const formattedDate = date.toLocaleDateString('ar-DZ', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const partner = (partners || []).find(p => p.id === req.provider_id);
+            const providerName = partner?.name || 'شريك غير معرف';
+            const providerPhone = partner?.phone || '';
+
+            // العثور على هاتف الزبون
+            const clientObj = (partners || []).find(p => p.id === req.client_id);
+            const clientPhoneVal = clientObj?.phone || '';
+            
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-red-50/20 transition';
+            row.innerHTML = `
+                <td class="p-4 font-bold text-gray-800">${req.client_name}</td>
+                <td class="p-4 font-bold text-gray-850">${providerName}</td>
+                <td class="p-4 font-bold text-indigo-700">${req.service_title}</td>
+                <td class="p-4 text-red-650 font-semibold text-xs max-w-xs truncate" title="${req.dispute_reason}">${req.dispute_reason}</td>
+                <td class="p-4 font-mono font-bold text-center text-purple-700">$${parseFloat(req.price_usd).toFixed(2)}</td>
+                <td class="p-4 flex justify-center gap-1.5 flex-wrap">
+                    <button onclick="openResolveDisputeModal('${req.id}', '${req.service_title}', ${req.price_usd}, '${req.provider_id}', '${req.client_id}', '${req.client_name}')" 
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-xl flex items-center gap-1 shadow-md cursor-pointer transition">
+                        ⚖️ اتخاذ القرار وحل النزاع
+                    </button>
+                    <a href="https://wa.me/${clientPhoneVal.replace(/\s+/g, '')}" target="_blank"
+                        class="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[10px] font-bold py-1.5 px-2.5 rounded-xl cursor-pointer transition">
+                        💬 واتساب الزبون
+                    </a>
+                    <a href="https://wa.me/${providerPhone.replace(/\s+/g, '')}" target="_blank"
+                        class="bg-pink-50 hover:bg-pink-100 text-pink-700 text-[10px] font-bold py-1.5 px-2.5 rounded-xl cursor-pointer transition">
+                        💬 واتساب الشريك
+                    </a>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    } catch (err) {
+        console.error("Error loading pending disputes:", err);
+    }
+}
+
+function openResolveDisputeModal(reqId, serviceTitle, priceUsd, providerId, clientId, clientName) {
+    document.getElementById('resolve-dispute-req-id').value = reqId;
+    document.getElementById('resolve-dispute-price').value = priceUsd;
+    document.getElementById('resolve-dispute-provider-id').value = providerId;
+    document.getElementById('resolve-dispute-client-id').value = clientId;
+    document.getElementById('resolve-dispute-service-title').value = serviceTitle;
+    
+    document.getElementById('resolve-dispute-modal').classList.remove('hidden');
+}
+
+function closeResolveDisputeModal() {
+    document.getElementById('resolve-dispute-modal').classList.add('hidden');
+}
+
+async function submitDisputeResolution() {
+    const reqId = document.getElementById('resolve-dispute-req-id').value;
+    const priceUsd = parseFloat(document.getElementById('resolve-dispute-price').value || 0);
+    const providerId = document.getElementById('resolve-dispute-provider-id').value;
+    const clientId = document.getElementById('resolve-dispute-client-id').value;
+    const serviceTitle = document.getElementById('resolve-dispute-service-title').value;
+    
+    // الإجراء المختار
+    const action = document.querySelector('input[name="resolve-action"]:checked').value;
+    
+    try {
+        if (action === 'accept') {
+            // خيار أ: قبول تسليم العمل وصرف المستحقات للشريك
+            // 1. تحديث حالة الطلب لمكتمل
+            const { error: reqErr } = await _supabase
+                .from('service_requests')
+                .update({ status: 'completed', processed_at: new Date().toISOString() })
+                .eq('id', reqId);
+            if (reqErr) throw reqErr;
+            
+            // 2. إضافة الأرباح لمحفظة الشريك
+            if (providerId && providerId !== 'null' && providerId !== '') {
+                const { data: wallet } = await _supabase
+                    .from('provider_wallets')
+                    .select('*')
+                    .eq('provider_id', providerId)
+                    .maybeSingle();
+
+                if (wallet) {
+                    const newCompleted = (wallet.completed_requests || 0) + 1;
+                    const newRev = parseFloat(wallet.total_revenue_usd || 0) + priceUsd;
+                    const newBal = parseFloat(wallet.payout_balance_usd || 0) + priceUsd;
+
+                    await _supabase
+                        .from('provider_wallets')
+                        .update({
+                            completed_requests: newCompleted,
+                            total_revenue_usd: newRev,
+                            payout_balance_usd: newBal
+                        })
+                        .eq('provider_id', providerId);
+                }
+            }
+            showToast("تم إكمال تسليم الخدمة بنجاح وصرف المستحقات للشريك.", "success");
+            
+        } else if (action === 'redo') {
+            // خيار ب: إعادة المشروع للشريك للتعديل
+            // تحديث حالة الطلب إلى "قيد التنفيذ" (in_progress)
+            const { error: reqErr } = await _supabase
+                .from('service_requests')
+                .update({ status: 'in_progress', dispute_reason: null, processed_at: new Date().toISOString() })
+                .eq('id', reqId);
+            if (reqErr) throw reqErr;
+            
+            showToast("تم إعادة توجيه الطلب للشريك لمراجعة العمل وإجراء التعديلات.", "success");
+            
+        } else if (action === 'refund') {
+            // خيار ج: رفض الخدمة كلياً وإرجاع المال للزبون
+            // تحديث حالة الطلب إلى rejected (مرفوض) مما يلغي حجز الرصيد تلقائياً للزبون
+            const { error: reqErr } = await _supabase
+                .from('service_requests')
+                .update({ status: 'rejected', processed_at: new Date().toISOString() })
+                .eq('id', reqId);
+            if (reqErr) throw reqErr;
+            
+            showToast("تم إلغاء وحذف طلب الخدمة بنجاح وإرجاع الرصيد المحجوز لحساب الزبون.", "success");
+        }
+        
+        closeResolveDisputeModal();
+        loadPendingDisputes();
+    } catch (err) {
+        console.error("Error resolving dispute:", err);
+        showToast("حدث خطأ أثناء تنفيذ تسوية النزاع.", "error");
+    }
+}
+
+window.loadPendingDisputes = loadPendingDisputes;
+window.openResolveDisputeModal = openResolveDisputeModal;
+window.closeResolveDisputeModal = closeResolveDisputeModal;
+window.submitDisputeResolution = submitDisputeResolution;

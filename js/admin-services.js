@@ -136,7 +136,6 @@ function openEditModal(serviceId) {
     document.getElementById('service-price').value = srv.price_usd;
     document.getElementById('service-status').value = srv.status || 'متوفر';
     document.getElementById('service-logo').value = srv.logo_url || '';
-    document.getElementById('service-whatsapp').value = srv.whatsapp_custom_text || '';
 
     document.getElementById('modal-title').innerText = "تعديل الخدمة المعروضة";
     document.getElementById('service-modal').classList.remove('hidden');
@@ -167,7 +166,6 @@ async function handleFormSubmit(event) {
     const price = parseFloat(document.getElementById('service-price').value || 0);
     const status = document.getElementById('service-status').value;
     const logoUrl = document.getElementById('service-logo').value.trim();
-    const whatsappText = document.getElementById('service-whatsapp').value.trim();
 
     const submitBtn = document.getElementById('submit-btn');
     submitBtn.disabled = true;
@@ -180,8 +178,7 @@ async function handleFormSubmit(event) {
             category,
             price_usd: price,
             status,
-            logo_url: logoUrl,
-            whatsapp_custom_text: whatsappText
+            logo_url: logoUrl
         };
 
         let result;

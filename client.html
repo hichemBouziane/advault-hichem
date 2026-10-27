@@ -7,236 +7,548 @@
     <title>AdVault — بوابة العميل</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="css/client.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6D28D9">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 
-<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col pb-20 md:pb-0">
 
-
-
-
-
-
-    <!-- الهيدر -->
-    <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center">
-        <div>
-            <h1 class="text-lg font-bold text-gray-800" id="user-welcome">مرحباً بك</h1>
-            <span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-md font-semibold">بوابة العميل
-                التجاري</span>
+    <!-- الهيدر المطور مع زر القائمة وتثبيت التطبيق -->
+    <header class="bg-white shadow-sm border-b border-gray-100 px-4 md:px-6 py-3.5 flex justify-between items-center sticky top-0 z-30">
+        <div class="flex items-center gap-3">
+            <button onclick="toggleSidebar()" class="text-2xl text-purple-700 hover:text-purple-950 transition cursor-pointer font-bold select-none p-1">
+                ☰
+            </button>
+            <div>
+                <h1 class="text-base md:text-lg font-bold text-gray-800" id="user-welcome">مرحباً بك</h1>
+                <span class="text-[11px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-md font-semibold">بوابة العميل التجاري</span>
+            </div>
         </div>
-        <button onclick="handleLogout()"
-            class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-xl text-sm transition cursor-pointer">
-            تسجيل الخروج
-        </button>
+        <div class="flex items-center gap-2">
+            <button onclick="triggerAppInstallOrApk()"
+                class="bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-3 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1 border border-purple-200/60">
+                <span>📲</span> <span class="hidden sm:inline">تطبيق الهاتف</span>
+            </button>
+            <button onclick="handleLogout()"
+                class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-3 py-2 rounded-xl text-xs md:text-sm transition cursor-pointer">
+                خروج
+            </button>
+        </div>
     </header>
 
+    <!-- ===== القائمة الجانبية للملاحة (Sidebar Drawer) ===== -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()" 
+        class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 transition-opacity"></div>
+    <div id="sidebar-drawer" 
+        class="fixed top-0 right-0 h-full w-64 bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col text-right">
+        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-purple-50">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">☰</span>
+                <h2 class="font-bold text-purple-800 text-sm">قائمة التحكم</h2>
+            </div>
+            <button onclick="toggleSidebar()" class="text-gray-500 hover:text-red-500 text-2xl font-bold cursor-pointer leading-none">&times;</button>
+        </div>
+        <div class="p-4 flex-1 space-y-2">
+            <button onclick="switchClientTab('dashboard')" 
+                class="w-full text-right px-4 py-3 rounded-xl font-bold text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition flex items-center gap-2.5 cursor-pointer">
+                <span>🏠</span> الرئيسية
+            </button>
+            <button onclick="switchClientTab('subscriptions')" 
+                class="w-full text-right px-4 py-3 rounded-xl font-bold text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition flex items-center gap-2.5 cursor-pointer">
+                <span>👁️</span> باقات الاشتراكات للمشاهدات
+            </button>
+            <button onclick="window.location.href='recharge.html'" 
+                class="w-full text-right px-4 py-3 rounded-xl font-bold text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition flex items-center gap-2.5 cursor-pointer">
+                <span>💳</span> شحن الرصيد
+            </button>
+            <button onclick="window.location.href='services.html'" 
+                class="w-full text-right px-4 py-3 rounded-xl font-bold text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition flex items-center gap-2.5 cursor-pointer">
+                <span>🛒</span> بوابة الخدمات
+            </button>
+            <button onclick="switchClientTab('settings')" 
+                class="w-full text-right px-4 py-3 rounded-xl font-bold text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition flex items-center gap-2.5 cursor-pointer">
+                <span>⚙️</span> الإعدادات الشخصية
+            </button>
+            <button onclick="switchClientTab('support')" 
+                class="w-full text-right px-4 py-3 rounded-xl font-bold text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition flex items-center gap-2.5 cursor-pointer">
+                <span>🛠️</span> الدعم الفني
+            </button>
+        </div>
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="handleLogout()" 
+                class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer text-center">
+                تسجيل الخروج
+            </button>
+        </div>
+    </div>
+
     <main class="flex-1 flex flex-col">
+        <!-- 1. قسم لوحة التحكم الرئيسي -->
+        <div id="tab-dashboard-content" class="block space-y-6 flex-1 flex flex-col">
+            <!-- ===== بطاقة الرصيد الرئيسية ===== -->
+            <div id="balance-card"
+                class="balance-card-purple mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500">
+                <div class="dots-pattern"></div>
+                <div class="relative z-10">
+                    <div class="flex justify-center mb-3">
+                        <div class="bg-white/20 rounded-2xl p-3 inline-block">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 7a2 2 0 012-2h14a2 2 0 012 2v1H3V7zM3 10h18v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 14a1 1 0 100-2 1 1 0 000 2z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="text-sm font-semibold text-white/80 mb-1">رصيدك الحالي</p>
+                    <h2 id="balance-amount" class="text-4xl font-bold tracking-tight mb-2">0 دج</h2>
+                    <p id="balance-message" class="text-sm font-medium text-white/90 mb-4">جاري التحميل...</p>
+                    <button id="pay-btn" onclick="openPayModal()"
+                        class="hidden bg-white text-red-600 font-bold px-6 py-2.5 rounded-2xl text-sm shadow-lg hover:bg-red-50 transition cursor-pointer">
+                        💳 ادفع الآن
+                    </button>
+                </div>
+            </div>
 
-        <!-- ===== بطاقة الرصيد الرئيسية ===== -->
-        <div id="balance-card"
-            class="balance-card-purple mx-4 mt-5 rounded-3xl p-6 text-white text-center shadow-xl relative overflow-hidden transition-all duration-500">
-            <!-- نقاط الخلفية الزخرفية -->
-            <div class="dots-pattern"></div>
+            <!-- ===== أزرار الإجراءات السريعة ===== -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 px-4 mt-5">
+                <button onclick="openCalculatorDrawer()"
+                    class="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition">
+                    <span class="text-lg">🧮</span>
+                    <span>حاسبة الإعلانات</span>
+                </button>
+                <button onclick="openPayModal()"
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition">
+                    <span class="text-lg">💳</span>
+                    <span>شحن الرصيد</span>
+                </button>
+                <button onclick="window.location.href='services.html'"
+                    class="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition">
+                    <span class="text-lg">🛒</span>
+                    <span>بوابة الخدمات</span>
+                </button>
+                <button onclick="switchClientTab('support')"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition">
+                    <span class="text-lg">🛠️</span>
+                    <span>الدعم الفني</span>
+                </button>
+            </div>
 
-            <div class="relative z-10">
-                <!-- أيقونة المحفظة -->
-                <div class="flex justify-center mb-3">
-                    <div class="bg-white/20 rounded-2xl p-3 inline-block">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M3 7a2 2 0 012-2h14a2 2 0 012 2v1H3V7zM3 10h18v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 14a1 1 0 100-2 1 1 0 000 2z" />
-                        </svg>
+            <!-- ===== -البطاقات الإحصائية ===== -->
+            <div class="grid grid-cols-2 gap-4 px-4 mt-5">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <p class="text-gray-400 text-xs font-medium mb-1">مصاريف الإعلانات</p>
+                    <p class="text-xl font-bold text-purple-700" id="client-total-ads">0.00 $</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <p class="text-gray-400 text-xs font-medium mb-1">إجمالي المدفوع</p>
+                    <p class="text-xl font-bold text-emerald-600" id="client-total-paid">0.00 $</p>
+                </div>
+            </div>
+
+            <!-- ===== جدول الحملات الإعلانية النشطة ===== -->
+            <div id="client-campaigns-section" class="bg-white mx-4 mt-5 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-700 text-sm flex items-center gap-1.5">
+                        <span>📢</span> حملاتك الإعلانية النشطة
+                    </h3>
+                    <span id="campaigns-count-badge" class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">0 حملة</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-slate-100 text-slate-700 text-xs border-b border-slate-200 font-bold">
+                            <tr>
+                                <th class="p-3 text-right">اسم الحملة الإعلانية</th>
+                                <th class="p-3 text-center">المبلغ المستهلك ($)</th>
+                                <th class="p-3 text-center">عمولة المنصة (20%)</th>
+                                <th class="p-3 text-left">التكلفة الكلية</th>
+                            </tr>
+                        </thead>
+                        <tbody id="client-campaigns-table" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="4" class="p-4 text-center text-gray-400 font-bold">لا توجد حملات إعلانية نشطة مرتبطة بحسابك حالياً.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="campaigns-show-more-container" class="p-3 border-t border-gray-100 text-center hidden">
+                    <button id="campaigns-toggle-btn" onclick="toggleCampaignsVisibility()"
+                        class="bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-5 py-2.5 rounded-xl text-xs transition cursor-pointer">
+                        👁️ عرض المزيد (+0 حملات إضافية)
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== جدول المدفوعات ===== -->
+            <div id="client-payments-section" class="bg-white mx-4 mt-5 mb-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100">
+                    <h3 class="font-bold text-gray-700 text-sm">سجل المدفوعات السابقة</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-slate-100 text-slate-700 text-xs border-b border-slate-200 font-bold">
+                            <tr>
+                                <th class="p-3 text-right">التاريخ</th>
+                                <th class="p-3 text-right">الدولار</th>
+                                <th class="p-3 text-right">الدينار</th>
+                                <th class="p-3 text-right">ملاحظة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="client-payments-table" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+                <div id="payments-show-more-container" class="p-3 border-t border-gray-100 text-center hidden">
+                    <button id="payments-toggle-btn" onclick="togglePaymentsVisibility()"
+                        class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-5 py-2.5 rounded-xl text-xs transition cursor-pointer">
+                        👁️ عرض المزيد (+0 مدفوعات إضافية)
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== جدول كشف المعاملات المالية للمحفظة ===== -->
+            <div id="client-wallet-ledger-section" class="bg-white mx-4 mt-5 mb-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-700 text-sm flex items-center gap-1.5">
+                        <span>📊</span> كشف حساب محفظتك المالي (Ledger)
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-slate-100 text-slate-700 text-xs border-b border-slate-200 font-bold">
+                            <tr>
+                                <th class="p-3 text-right">التاريخ</th>
+                                <th class="p-3 text-right">نوع العملية</th>
+                                <th class="p-3 text-right">التفاصيل والبيان</th>
+                                <th class="p-3 text-left">القيمة الكلية ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="client-ledger-table-body" class="divide-y divide-gray-100 text-xs">
+                            <tr>
+                                <td colspan="4" class="p-4 text-center text-gray-400 font-bold">جاري تحميل كشف الحساب...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ===== جدول تتبع طلبات الخدمات المخصصة للزبون ===== -->
+            <div id="client-services-requests-section" class="bg-white mx-4 mt-5 mb-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-700 text-sm flex items-center gap-1.5">
+                        <span>🛒</span> تتبع طلبات الخدمات والاشتراكات الخاصة بك
+                    </h3>
+                    <span id="client-requests-count-badge" class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">0 طلب</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-slate-100 text-slate-700 text-xs border-b border-slate-200 font-bold">
+                            <tr>
+                                <th class="p-3 text-right">اسم الخدمة</th>
+                                <th class="p-3 text-center">التكلفة ($)</th>
+                                <th class="p-3 text-center">تاريخ التسليم المتوقع</th>
+                                <th class="p-3 text-center">الحالة</th>
+                                <th class="p-3 text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="client-requests-table-body" class="divide-y divide-gray-100 text-xs">
+                            <tr>
+                                <td colspan="5" class="p-4 text-center text-gray-400 font-bold">لا توجد طلبات خدمات نشطة حالياً.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. قسم باقات الاشتراكات الجديد للمشاهدات -->
+        <div id="tab-subscriptions-content" class="hidden p-4 space-y-6 flex-1 max-w-5xl mx-auto w-full">
+            <div class="bg-gradient-to-r from-purple-800 to-indigo-800 text-white rounded-3xl p-6 text-center shadow-lg">
+                <h3 class="text-xl font-bold">👁️ باقات إعلانات المشاهدات الحصرية</h3>
+                <p class="text-xs text-purple-200 mt-2">اختر الباقة المناسبة ليتم إرسال طلب تفعيل الاشتراك للأدمن للمراجعة والخصم من رصيدك</p>
+            </div>
+
+            <!-- شبكة الباقات الثلاثة -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- SILVER TIER -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 space-y-4">
+                    <div class="bg-gradient-to-br from-slate-400 to-slate-600 text-white p-4 rounded-2xl text-center shadow-sm">
+                        <h4 class="font-black text-base uppercase">SILVER TIER</h4>
+                        <span class="text-[10px] opacity-90 block">باقة فضية متميزة</span>
+                    </div>
+                    <div class="space-y-2">
+                        <button onclick="requestSubscription('Silver', 1500, 'Faddat Tier', 3)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Faddat Tier (3 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">1500 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Silver', 2600, '10000 - 30000 مشاهدة', 5)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>10k - 30k مشاهدة (5 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">2600 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Silver', 3700, '14000 - 42000 مشاهدة', 7)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>14k - 42k مشاهدة (7 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">3700 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Silver', 5400, '20000 - 60000 مشاهدة', 10)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>20k - 60k مشاهدة (10 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">5400 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Silver', 11600, '40000 - 120000 مشاهدة', 21)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>40k - 120k مشاهدة (21 يوم)</span>
+                            <span class="text-purple-700 text-sm font-black">11600 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Silver', 17000, '60000 - 180000 مشاهدة', 30)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>60k - 180k مشاهدة (30 يوم)</span>
+                            <span class="text-purple-700 text-sm font-black">17000 دج</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- عنوان -->
-                <p class="text-sm font-semibold text-white/80 mb-1">رصيدك الحالي</p>
+                <!-- GOLD TIER -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-purple-100 space-y-4 relative">
+                    <div class="absolute top-2 right-2 bg-purple-100 text-purple-800 text-[8px] font-black uppercase px-2 py-0.5 rounded">الشائع</div>
+                    <div class="bg-gradient-to-br from-amber-500 to-yellow-600 text-white p-4 rounded-2xl text-center shadow-sm">
+                        <h4 class="font-black text-base uppercase">GOLD TIER</h4>
+                        <span class="text-[10px] opacity-90 block">باقة ذهبية احترافية</span>
+                    </div>
+                    <div class="space-y-2">
+                        <button onclick="requestSubscription('Gold', 3100, 'Dhahab Tier (تكلفة)', 3)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Dhahab Tier (3 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">3100 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Gold', 4200, '10000 - 30000 مشاهدة', 5)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>10k - 30k مشاهدة (5 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">4200 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Gold', 5200, '14000 - 42000 مشاهدة', 7)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>14k - 42k مشاهدة (7 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">5200 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Gold', 6800, '20000 - 60000 مشاهدة', 10)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>20k - 60k مشاهدة (10 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">6800 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Gold', 22000, 'Vues: 75000', 21)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Vues: 75000 (21 يوم)</span>
+                            <span class="text-purple-700 text-sm font-black">22000 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Gold', 34000, 'Vues: 180000', 30)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Vues: 180000 (30 يوم)</span>
+                            <span class="text-purple-700 text-sm font-black">34000 دج</span>
+                        </button>
+                    </div>
+                </div>
 
-                <!-- المبلغ -->
-                <h2 id="balance-amount" class="text-4xl font-bold tracking-tight mb-2">0 دج</h2>
+                <!-- DIAMOND TIER -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 space-y-4">
+                    <div class="bg-gradient-to-br from-cyan-500 to-indigo-600 text-white p-4 rounded-2xl text-center shadow-sm">
+                        <h4 class="font-black text-base uppercase">DIAMOND TIER</h4>
+                        <span class="text-[10px] opacity-90 block">باقة ألماسية فائقة</span>
+                    </div>
+                    <div class="space-y-2">
+                        <button onclick="requestSubscription('Diamond', 4900, 'Almas Tier (دلساس)', 3)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Almas Tier (3 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">4900 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Diamond', 7900, 'Vues: 75000', 5)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Vues: 75000 (5 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">7900 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Diamond', 10000, 'Vues: 175000', 7)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Vues: 175000 (7 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">10000 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Diamond', 15000, 'Vues: 75000', 10)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Vues: 75000 (10 أيام)</span>
+                            <span class="text-purple-700 text-sm font-black">15000 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Diamond', 30000, 'Vues: 150000', 21)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Vues: 150000 (21 يوم)</span>
+                            <span class="text-purple-700 text-sm font-black">30000 دج</span>
+                        </button>
+                        <button onclick="requestSubscription('Diamond', 45000, 'Vues: 350000', 30)" class="w-full text-right p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-purple-50 hover:border-purple-200 transition cursor-pointer flex justify-between items-center text-xs font-bold text-gray-700">
+                            <span>Vues: 350000 (30 يوم)</span>
+                            <span class="text-purple-700 text-sm font-black">45000 دج</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-                <!-- الرسالة الديناميكية -->
-                <p id="balance-message" class="text-sm font-medium text-white/90 mb-4">جاري التحميل...</p>
-
-                <!-- زر الدفع (يظهر فقط عند الرصيد السالب) -->
-                <button id="pay-btn" onclick="openPayModal()"
-                    class="hidden bg-white text-red-600 font-bold px-6 py-2.5 rounded-2xl text-sm shadow-lg hover:bg-red-50 transition cursor-pointer">
-                    💳 ادفع الآن
-                </button>
+            <!-- زر التواصل لبدء حملة جديدة -->
+            <div class="pt-6 text-center">
+                <a href="https://wa.me/213657693583?text=مرحباً%20أنا%20زبون%20مسجل%20في%20المنصة%20وأريد%20بدء%20حملة%20إعلانية%20جديدة%20للمشاهدات." 
+                    target="_blank" 
+                    class="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#20ba59] text-white font-bold px-6 py-3 rounded-2xl shadow-lg transition hover:scale-105 cursor-pointer text-decoration-none">
+                    <svg class="w-5 h-5 fill-current text-white" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.94 0c3.205.001 6.216 1.248 8.48 3.515 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.618-5.33 11.942-11.943 11.942-2.01-.001-3.987-.508-5.742-1.477L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.747 1.451 5.436 0 9.86-4.42 9.863-9.864.001-2.637-1.03-5.114-2.904-6.989-1.873-1.873-4.351-2.904-6.986-2.904-5.44 0-9.865 4.42-9.869 9.865-.001 1.748.498 3.31 1.442 4.797l-.992 3.623 3.702-.97zM16.52 13.3c-.267-.135-1.587-.783-1.834-.872-.248-.09-.429-.135-.61.135-.181.271-.7.872-.859 1.05-.158.179-.317.202-.585.067-.267-.135-1.13-.417-2.152-1.328-.795-.71-1.332-1.588-1.488-1.857-.158-.271-.017-.417.118-.551.121-.12.267-.315.4-.472.133-.158.178-.271.267-.451.09-.18.045-.338-.022-.472-.068-.135-.61-1.472-.836-2.017-.22-.531-.441-.459-.61-.468-.158-.008-.339-.01-.52-.01-.181 0-.476.068-.724.339-.248.271-.951.928-.951 2.264 0 1.336.974 2.626 1.11 2.807.135.18 1.917 2.928 4.644 4.103.649.279 1.156.446 1.551.572.653.208 1.248.178 1.717.108.523-.078 1.587-.649 1.814-1.24.226-.59.226-1.098.158-1.205-.068-.107-.248-.172-.516-.307z"/></svg>
+                    <span>تواصل واتساب لبدء حملة إعلانية جديدة</span>
+                </a>
             </div>
         </div>
 
-        <!-- ===== أزرار الإجراءات السريعة ===== -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 px-4 mt-5">
-            <button onclick="openCalculatorDrawer()"
-                class="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition">
-                <span class="text-lg">🧮</span>
-                <span>حاسبة الإعلانات</span>
-            </button>
-            <button onclick="openPayModal()"
-                class="bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition">
-                <span class="text-lg">💳</span>
-                <span>شحن الرصيد</span>
-            </button>
-            <button onclick="window.location.href='services.html'"
-                class="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition">
-                <span class="text-lg">🛒</span>
-                <span>بوابة الخدمات</span>
-            </button>
-            <a href="https://wa.me/213657693583?text=مرحباً،%20أنا%20العميل%20المسجل%20لديكم.%20أريد%20الاستفسار%20عن%20تفاصيل%20في%20حسابي%20أو%20طلب%20مساعدة."
-                target="_blank"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-2xl font-bold shadow-md cursor-pointer text-center text-xs flex flex-col items-center justify-center gap-1.5 transition text-decoration-none">
-                <span class="text-lg">📞</span>
-                <span>الدعم الفني</span>
-            </a>
-        </div>
+        <!-- 5. قسم الإعدادات الشخصية للزبون -->
+        <div id="tab-settings-content" class="hidden space-y-6 flex-1 p-6">
+            <div class="bg-gradient-to-r from-purple-700 to-indigo-700 text-white rounded-[2rem] p-6 text-center shadow-lg relative overflow-hidden">
+                <div class="dots-pattern"></div>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-bold">⚙️ الإعدادات الشخصية والربط</h3>
+                    <p class="text-xs text-purple-100 mt-2">تحديث كلمة المرور وربط حسابك بالتليجرام لتلقي التنبيهات الفورية</p>
+                </div>
+            </div>
 
-        <!-- ===== -البطاقات الإحصائية ===== -->
-        <div class="grid grid-cols-2 gap-4 px-4 mt-5">
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                <p class="text-gray-400 text-xs font-medium mb-1">مصاريف الإعلانات</p>
-                <p class="text-xl font-bold text-purple-700" id="client-total-ads">0.00 $</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                <p class="text-gray-400 text-xs font-medium mb-1">إجمالي المدفوع</p>
-                <p class="text-xl font-bold text-emerald-600" id="client-total-paid">0.00 $</p>
-            </div>
-        </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- كارت 1: ربط التليجرام -->
+                <div class="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-4 text-right">
+                    <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                        <span>💬</span> إشعارات التليجرام الفورية
+                    </h4>
+                    <p class="text-xs text-gray-400 leading-relaxed font-semibold">
+                        اربط حسابك لتصلك إشعارات فورية على تليجرام عند قبول طلباتك، تعديل ميزانياتك، أو عند استلام رسائل الدعم والنزاعات.
+                    </p>
+                    <div class="space-y-3">
+                        <a href="https://t.me/userinfobot" target="_blank"
+                            class="w-full text-center bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold py-2 rounded-xl text-xs transition inline-block text-decoration-none">
+                            🔍 الحصول على معرّف التليجرام الخاص بك
+                        </a>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">معرّف التليجرام الخاص بك (Chat ID):</label>
+                            <input type="text" id="client-tg-chat-id-input" placeholder="مثال: 1746721547"
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold text-center">
+                        </div>
+                        <button onclick="saveClientTelegramChatId()"
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                            💾 حفظ معرّف التليجرام
+                        </button>
+                    </div>
+                </div>
 
-        <!-- ===== جدول الحملات الإعلانية النشطة ===== -->
-        <div class="bg-white mx-4 mt-5 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
-                <h3 class="font-bold text-gray-700 text-sm flex items-center gap-1.5">
-                    <span>📢</span> حملاتك الإعلانية النشطة
-                </h3>
-                <span id="campaigns-count-badge" class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">0 حملة</span>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-right text-sm">
-                    <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
-                        <tr>
-                            <th class="p-3">اسم الحملة الإعلانية</th>
-                            <th class="p-3 text-center">المبلغ المستهلك ($)</th>
-                            <th class="p-3 text-center">العمولة المضافة (20%)</th>
-                            <th class="p-3 text-left">التكلفة الكلية</th>
-                        </tr>
-                    </thead>
-                    <tbody id="client-campaigns-table" class="divide-y divide-gray-100">
-                        <tr>
-                            <td colspan="4" class="p-4 text-center text-gray-400 font-bold">لا توجد حملات إعلانية نشطة مرتبطة بحسابك حالياً.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <!-- زر عرض المزيد للحملات -->
-            <div id="campaigns-show-more-container" class="p-3 border-t border-gray-100 text-center hidden">
-                <button id="campaigns-toggle-btn" onclick="toggleCampaignsVisibility()"
-                    class="bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-5 py-2.5 rounded-xl text-xs transition cursor-pointer">
-                    👁️ عرض المزيد (+0 حملات إضافية)
-                </button>
+                <!-- كارت 2: تغيير كلمة المرور -->
+                <div class="bg-white p-6 rounded-3xl border border-gray-150 shadow-sm space-y-4 text-right">
+                    <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                        <span>🔒</span> تغيير كلمة المرور
+                    </h4>
+                    <form onsubmit="changeClientPassword(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1">كلمة المرور الجديدة:</label>
+                            <input type="password" id="client-new-pass" required placeholder="••••••••"
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">💾 حفظ كلمة المرور الجديدة</button>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <!-- ===== جدول المدفوعات ===== -->
-        <div class="bg-white mx-4 mt-5 mb-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100">
-                <h3 class="font-bold text-gray-700 text-sm">سجل المدفوعات السابقة</h3>
+        <!-- 6. قسم الدعم الفني وتذاكر الشكاوى للزبون -->
+        <div id="tab-support-content" class="hidden space-y-6 flex-1 p-6">
+            <div class="bg-gradient-to-r from-indigo-750 to-purple-750 text-white rounded-[2rem] p-6 text-center shadow-lg relative overflow-hidden">
+                <div class="dots-pattern"></div>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-bold">🛠️ مركز الدعم الفني وتذاكر الشكاوى</h3>
+                    <p class="text-xs text-purple-100 mt-2">افتح تذكرة دعم فني جديدة لمتابعة استفسارك أو تقديم شكوى مباشرة للمسؤولين</p>
+                </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-right text-sm">
-                    <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
-                        <tr>
-                            <th class="p-3">التاريخ</th>
-                            <th class="p-3">الدولار</th>
-                            <th class="p-3">الدينار</th>
-                            <th class="p-3">ملاحظة</th>
-                        </tr>
-                    </thead>
-                    <tbody id="client-payments-table" class="divide-y divide-gray-100"></tbody>
-                </table>
-            </div>
-            <!-- زر عرض المزيد للمدفوعات -->
-            <div id="payments-show-more-container" class="p-3 border-t border-gray-100 text-center hidden">
-                <button id="payments-toggle-btn" onclick="togglePaymentsVisibility()"
-                    class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-5 py-2.5 rounded-xl text-xs transition cursor-pointer">
-                    👁️ عرض المزيد (+0 مدفوعات إضافية)
-                </button>
+
+            <div class="bg-white p-6 rounded-[2rem] border border-gray-150 shadow-sm space-y-6 text-right">
+                <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+                    <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                        <span>📋</span> تذاكرك الحالية
+                    </h4>
+                    <button onclick="openNewTicketModal()" 
+                        class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md transition cursor-pointer">
+                        ➕ فتح تذكرة جديدة
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-xs">
+                        <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold">
+                            <tr>
+                                <th class="p-3 text-right">العنوان</th>
+                                <th class="p-3 text-right">التصنيف</th>
+                                <th class="p-3 text-center">الحالة</th>
+                                <th class="p-3 text-center">آخر تحديث</th>
+                                <th class="p-3 text-left">التفاصيل / الرد</th>
+                            </tr>
+                        </thead>
+                        <tbody id="client-tickets-table-body" class="divide-y divide-gray-150">
+                            <tr>
+                                <td colspan="5" class="p-6 text-center text-gray-400 font-bold">لا توجد تذاكر دعم فني مفتوحة حالياً.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-
     </main>
 
-    <!-- ===== نافذة الدفع ===== -->
-    <div id="pay-modal"
-        class="hidden fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden text-right">
-            <div class="bg-gradient-to-br from-purple-700 to-purple-900 p-5 text-white text-center">
-                <div class="text-3xl mb-1">💳</div>
-                <h3 class="font-bold text-lg">تفاصيل الدفع</h3>
-                <p class="text-xs text-purple-200 mt-1">انسخ الـ ID وأرسل المبلغ عبر Redotpay</p>
+    <!-- ===== نافذة فتح تذكرة دعم فني جديدة ===== -->
+    <div id="new-ticket-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden text-right border border-gray-100">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white text-center font-bold text-base">
+                ➕ فتح تذكرة دعم جديدة
             </div>
-            <div class="p-5 space-y-4">
-                <div class="bg-purple-50 border border-purple-200 rounded-2xl p-4 text-center">
-                    <p class="text-xs text-gray-500 mb-1 font-medium">رقم بطاقة Redotpay</p>
-                    <p id="redotpay-id" class="text-lg font-bold text-purple-800 tracking-widest">— — — —</p>
-                    <button onclick="copyRedotpayId()"
-                        class="mt-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-1.5 rounded-xl cursor-pointer transition">
-                        📋 نسخ الـ ID
+            <form onsubmit="submitSupportTicket(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-650 mb-1">عنوان التذكرة / المشكلة باختصار:</label>
+                    <input type="text" id="ticket-title" required placeholder="مثال: لم يتم تحديث رصيد الشحن"
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-650 bg-slate-50/50 font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-650 mb-1">تصنيف المشكلة:</label>
+                    <select id="ticket-category" required
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-650 bg-slate-50/50 font-bold">
+                        <option value="شحن الرصيد">شحن الرصيد</option>
+                        <option value="الحملات الإعلانية">الحملات الإعلانية</option>
+                        <option value="طلب الخدمات">طلب الخدمات</option>
+                        <option value="أخرى">أخرى</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-650 mb-1">الوصف التفصيلي للمشكلة:</label>
+                    <textarea id="ticket-description" required rows="4" placeholder="يرجى كتابة التفاصيل الدقيقة لمشكلتك لمساعدتك بأسرع وقت..."
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-650 bg-slate-50/50"></textarea>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" id="ticket-submit-btn" class="w-full bg-purple-650 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer shadow-md shadow-purple-650/10">
+                        💾 إرسال التذكرة
+                    </button>
+                    <button type="button" onclick="closeNewTicketModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                        إلغاء
                     </button>
                 </div>
-                <div class="bg-red-50 border border-red-100 rounded-2xl p-4 text-center">
-                    <p class="text-xs text-gray-500 mb-2">المبلغ المستحق حالياً</p>
-                    <div id="modal-balance">
-                        <span class="text-2xl font-bold text-red-600">0 دج</span>
-                    </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== نافذة عرض تفاصيل الرد والتذكرة ===== -->
+    <div id="view-ticket-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden text-right border border-gray-100">
+            <div class="bg-slate-100 p-4 text-gray-800 text-center font-bold text-base flex justify-between items-center">
+                <span id="view-ticket-category" class="bg-purple-100 text-purple-800 text-[10px] px-2 py-0.5 rounded"></span>
+                <span id="view-ticket-title" class="font-bold">تفاصيل التذكرة</span>
+                <button type="button" onclick="closeViewTicketModal()" class="text-gray-500 hover:text-red-500 text-xl font-bold">&times;</button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="space-y-1">
+                    <span class="text-[9px] font-black text-gray-400 block">شرح المشكلة من طرفك:</span>
+                    <p id="view-ticket-desc" class="text-xs bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed text-gray-700"></p>
                 </div>
-
-                <!-- نموذج إرسال طلب الشحن -->
-                <div class="border-t border-gray-100 pt-4 space-y-3">
-                    <p class="text-xs font-bold text-gray-700">✍️ تقديم طلب شحن جديد:</p>
-                    
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ المراد شحنه ($)</label>
-                        <input type="number" id="deposit-amount-usd" min="1" step="any" placeholder="أدخل القيمة بالدولار (مثال: 50)" required
-                            class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-600 text-xs">
-                        <p class="text-[9px] text-gray-400 mt-1 font-semibold">المبلغ المقابل بالدينار: <span id="deposit-dzd-preview" class="text-emerald-600 font-extrabold text-[11px]">0 دج</span></p>
-                    </div>
-
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-500 mb-1">صورة إثبات الدفع (لقطة شاشة)</label>
-                        <input type="file" id="deposit-screenshot" accept="image/*" required
-                            class="w-full px-2 py-1.5 rounded-xl border border-gray-200 text-[10px] bg-gray-50 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer">
-                    </div>
-
-                    <button id="submit-deposit-btn" onclick="submitDepositRequest()"
-                        class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1">
-                        🚀 إرسال طلب الشحن للتأكيد
-                    </button>
+                <div class="space-y-1">
+                    <span class="text-[9px] font-black text-purple-700 block">رد الإدارة والمسؤولين:</span>
+                    <p id="view-ticket-reply" class="text-xs bg-purple-50/50 p-3 rounded-xl border border-purple-100 leading-relaxed text-purple-900 font-medium"></p>
                 </div>
-
-                <!-- ================= قسم الواتساب والوكلاء المضاف حديثاً ================= -->
-                <div class="border-t border-gray-100 pt-3 space-y-2">
-                    <p class="text-[11px] font-bold text-gray-500 mb-1 flex items-center gap-1">
-                        <span>🛡️</span> خيارات شحن بديلة:
-                    </p>
-                    <!-- زر الواتساب مع نص الرسالة التلقائية المطلوبة -->
-                    <a href="https://wa.me/213796517899?text=مرحباً،%20أود%20التواصل%20مع%20الوكلاء%20الموثوقين%20لشراء%20الدولار%20في%20العاصمة.%20كم%20سعر%20الدولار%20اليوم؟%20وأين%20موقعكم%20للتقرب%20إليكم%20في%20أقرب%20وقت%20ممكن؟" 
-                       target="_blank" 
-                       class="w-full bg-[#25D366] hover:bg-[#20ba59] text-white font-bold py-2.5 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 text-[10px] shadow-md shadow-green-600/10 cursor-pointer text-decoration-none">
-                        تواصل مع الوكلاء لشراء الدولار بالعاصمة
-                    </a>
-                </div>
-                <!-- ============================================================== -->
-
-                <button onclick="closePayModal()"
-                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
-                    إغلاق
+                <button type="button" onclick="closeViewTicketModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                    إغلاق النافذة
                 </button>
             </div>
         </div>
     </div>
+
+
 
     <!-- ===== قائمة حاسبة الإعلانات الجانبية (Calculator Drawer) ===== -->
     <div id="calculator-drawer-overlay" onclick="closeCalculatorDrawer()" 
@@ -324,7 +636,104 @@
         </div>
     </div>
 
-    <script src="js/client.js"></script>
+    <!-- ===== نافذة تقديم اعتراض أو شكوى للزبون ===== -->
+    <div id="client-dispute-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden text-right">
+            <div class="bg-red-600 p-4 text-white text-center font-bold text-lg">
+                ❌ تقديم اعتراض على استلام الخدمة
+            </div>
+            <form onsubmit="submitDispute(event)" class="p-6 space-y-4">
+                <input type="hidden" id="dispute-request-id">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-1">يرجى كتابة سبب الاعتراض أو النواقص التي لاحظتها في العمل:</label>
+                    <textarea id="dispute-reason" required rows="4" placeholder="مثال: التصميم لا يطابق الألوان المطلوبة، أو الفيديو تنقصه بعض المقاطع المتفق عليها..."
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+                    <p class="text-[10px] text-gray-400 mt-1 font-semibold">سيتم إرسال هذا الاعتراض فوراً لإعلام الشريك وسيتم إخطار الأدمن بالتدخل لحل النزاع.</p>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                        إرسال الاعتراض للأدمن
+                    </button>
+                    <button type="button" onclick="closeDisputeModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== نافذة تقييم الخدمة المنجزة ===== -->
+    <div id="rate-service-modal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden text-right border border-gray-100">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white text-center font-bold text-base">
+                ⭐ تقييم جودة الخدمة
+            </div>
+            <form onsubmit="submitServiceRating(event)" class="p-6 space-y-4">
+                <input type="hidden" id="rate-request-id">
+                <input type="hidden" id="rate-service-id">
+                <input type="hidden" id="rate-val" value="5">
+                
+                <div class="text-center space-y-2">
+                    <p class="text-xs text-gray-400 font-bold">كيف كانت جودة العمل المقدم من الشريك؟</p>
+                    <!-- نجوم التقييم تفاعلية -->
+                    <div class="flex justify-center gap-2 text-3xl py-2" id="stars-container">
+                        <span onclick="setStarRating(1)" class="cursor-pointer transition hover:scale-110 text-amber-400" data-star="1">★</span>
+                        <span onclick="setStarRating(2)" class="cursor-pointer transition hover:scale-110 text-amber-400" data-star="2">★</span>
+                        <span onclick="setStarRating(3)" class="cursor-pointer transition hover:scale-110 text-amber-400" data-star="3">★</span>
+                        <span onclick="setStarRating(4)" class="cursor-pointer transition hover:scale-110 text-amber-400" data-star="4">★</span>
+                        <span onclick="setStarRating(5)" class="cursor-pointer transition hover:scale-110 text-amber-400" data-star="5">★</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-650 mb-1">اكتب تعليقك أو نصيحتك للآخرين:</label>
+                    <textarea id="rate-comment" rows="3" placeholder="اكتب رأيك بأمانة حول سرعة التسجيل والتواصل وجودة الخدمة..."
+                        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-600 bg-slate-50/50"></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer shadow-md shadow-purple-600/10">
+                        💾 حفظ وإرسال التقييم
+                    </button>
+                    <button type="button" onclick="closeRateModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== شريط التنقل السفلي لتطبيق الهاتف (Mobile Bottom App Bar) ===== -->
+    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 flex justify-around items-center py-2 px-1">
+        <button onclick="switchClientTab('dashboard'); window.scrollTo({top: 0, behavior: 'smooth'});"
+            class="flex flex-col items-center justify-center gap-0.5 text-purple-700 font-bold text-[11px] py-1 px-2 rounded-xl cursor-pointer">
+            <span class="text-lg leading-none">🏠</span>
+            <span>حسابي</span>
+        </button>
+        <button onclick="switchClientTab('dashboard'); setTimeout(() => { const el = document.getElementById('client-payments-section'); if(el) el.scrollIntoView({behavior:'smooth'}); }, 100);"
+            class="flex flex-col items-center justify-center gap-0.5 text-gray-600 hover:text-purple-700 font-bold text-[11px] py-1 px-2 rounded-xl cursor-pointer">
+            <span class="text-lg leading-none">💵</span>
+            <span>المدفوعات</span>
+        </button>
+        <button onclick="openPayModal()"
+            class="flex flex-col items-center justify-center -mt-5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-[11px] w-14 h-14 rounded-2xl shadow-lg shadow-purple-600/30 border-4 border-gray-100 cursor-pointer">
+            <span class="text-lg leading-none">💳</span>
+            <span class="text-[9px] mt-0.5">اشحن</span>
+        </button>
+        <button onclick="enableMobilePushPermission()"
+            class="flex flex-col items-center justify-center gap-0.5 text-gray-600 hover:text-purple-700 font-bold text-[11px] py-1 px-2 rounded-xl cursor-pointer">
+            <span class="text-lg leading-none">🔔</span>
+            <span>التنبيهات</span>
+        </button>
+        <button onclick="switchClientTab('support')"
+            class="flex flex-col items-center justify-center gap-0.5 text-gray-600 hover:text-purple-700 font-bold text-[11px] py-1 px-2 rounded-xl cursor-pointer">
+            <span class="text-lg leading-none">🛠️</span>
+            <span>الدعم</span>
+        </button>
+    </nav>
+
+    <script src="js/mobile-app.js?v=2.0"></script>
+    <script src="js/client.js?v=2.0"></script>
 </body>
 
 </html>

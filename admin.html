@@ -10,6 +10,11 @@
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="css/admin.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     <script>
         // التحقق المبكر من الصلاحية قبل تحميل الصفحة
         (function () {
@@ -19,7 +24,7 @@
     </script>
 </head>
 
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans">
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans pb-20 md:pb-0">
 
     <!-- الحاوية الرئيسية (تُزيح لليسار في الحاسوب لترك مساحة للقائمة الجانبية الثابتة على اليمين) -->
     <div class="flex-1 md:mr-64 flex flex-col min-h-screen">
@@ -226,11 +231,12 @@
                             <th class="p-3 font-semibold">المستحق الحالي ($)</th>
                             <th class="p-3 font-semibold">الأيام المتبقية</th>
                             <th class="p-3 font-semibold text-center">إجراءات التحويل</th>
+                            <th class="p-3 font-semibold text-center">تقرير واتساب</th>
                         </tr>
                     </thead>
                     <tbody id="admin-clients-table" class="divide-y divide-gray-100 text-sm">
                         <tr>
-                            <td colspan="9" class="p-4 text-center text-gray-400">جاري جلب البيانات...</td>
+                            <td colspan="10" class="p-4 text-center text-gray-400">جاري جلب البيانات...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1478,9 +1484,39 @@
         </div>
     </div>
 
-    <script src="js/config.js?v=1.6"></script>
-    <script src="js/analytics.js?v=1.6"></script>
-    <script src="js/admin.js?v=1.6"></script>
+    <!-- ===== شريط التنقل السفلي السريع للأدمن في الهاتف (Admin Mobile Bottom Bar) ===== -->
+    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 flex justify-around items-center py-2 px-1">
+        <button onclick="switchMainView('dashboard'); window.scrollTo({top: 0, behavior: 'smooth'});"
+            class="flex flex-col items-center justify-center gap-0.5 text-indigo-700 font-bold text-[11px] py-1 px-2 rounded-xl cursor-pointer">
+            <span class="text-lg leading-none">🏠</span>
+            <span>الرئيسية</span>
+        </button>
+        <button onclick="switchMainView('dashboard'); setTimeout(() => { const el = document.getElementById('date-filter'); if(el) el.scrollIntoView({behavior:'smooth', block:'center'}); }, 100);"
+            class="flex flex-col items-center justify-center gap-0.5 text-gray-600 hover:text-indigo-700 font-bold text-[11px] py-1 px-2 rounded-xl cursor-pointer">
+            <span class="text-lg leading-none">📊</span>
+            <span>التحليلات</span>
+        </button>
+        <button onclick="document.getElementById('payment-modal').classList.remove('hidden'); openPaymentModal();"
+            class="flex flex-col items-center justify-center -mt-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[11px] w-15 h-15 rounded-2xl shadow-xl shadow-amber-500/30 border-4 border-gray-50 cursor-pointer">
+            <span class="text-xl leading-none">💰</span>
+            <span class="text-[9px] mt-0.5">+ دفعة</span>
+        </button>
+        <button onclick="switchMainView('dashboard'); setTimeout(() => { const el = document.getElementById('admin-clients-table'); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 100);"
+            class="flex flex-col items-center justify-center gap-0.5 text-gray-600 hover:text-indigo-700 font-bold text-[11px] py-1 px-2 rounded-xl cursor-pointer">
+            <span class="text-lg leading-none">👥</span>
+            <span>الزبائن</span>
+        </button>
+        <button onclick="openModal('client-modal')"
+            class="flex flex-col items-center justify-center gap-0.5 text-gray-600 hover:text-indigo-700 font-bold text-[11px] py-1 px-2 rounded-xl cursor-pointer">
+            <span class="text-lg leading-none">➕</span>
+            <span>زبون جديد</span>
+        </button>
+    </nav>
+
+    <script src="js/config.js?v=2.0"></script>
+    <script src="js/mobile-app.js?v=2.0"></script>
+    <script src="js/analytics.js?v=2.0"></script>
+    <script src="js/admin.js?v=2.0"></script>
 </body>
 
 </html>

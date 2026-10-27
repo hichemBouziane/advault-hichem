@@ -6,6 +6,8 @@
     <title>تحليلات ونشاط الزبائن</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         (function () {
             const _u = JSON.parse(localStorage.getItem('currentUser'));
@@ -40,9 +42,39 @@
             </div>
         </div>
 
+        <!-- ===== قسم الرسوم البيانية للزيارات ===== -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <!-- مخطط الزيارات حسب ساعات اليوم -->
+            <div class="space-y-3">
+                <h4 class="text-sm font-bold text-gray-700 flex items-center gap-1 border-b border-gray-50 pb-2">📈 نشاط الزيارات حسب ساعات اليوم</h4>
+                <div class="relative h-64">
+                    <canvas id="hourlyVisitsChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- مخطط الزيارات حسب أيام الأسبوع -->
+            <div class="space-y-3">
+                <h4 class="text-sm font-bold text-gray-700 flex items-center gap-1 border-b border-gray-50 pb-2">📊 نشاط الزيارات حسب أيام الأسبوع</h4>
+                <div class="relative h-64">
+                    <canvas id="weeklyVisitsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+            <div class="px-4 py-3 bg-gray-50 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3">
                 <h3 class="font-bold text-gray-700 text-sm">📋 سجل المتابعة والزيارات التفصيلي</h3>
+                
+                <!-- فلتر الفترة الزمنية -->
+                <div class="flex gap-2">
+                    <select id="time-filter" onchange="filterLogsByTime()"
+                        class="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-bold bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm">
+                        <option value="all">كل الأوقات</option>
+                        <option value="today">اليوم</option>
+                        <option value="week">هذا الأسبوع</option>
+                        <option value="month">هذا الشهر</option>
+                    </select>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-right border-collapse">

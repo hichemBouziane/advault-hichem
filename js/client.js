@@ -27,16 +27,45 @@ const REDOTPAY_ID = "1999499801";
 // ===== حد الرصيد المنخفض (بالدينار) =====
 const LOW_BALANCE_THRESHOLD = 10000;
 
-// التحقق من تسجيل الدخول فوراً عند فتح السكريبت
-const user = JSON.parse(localStorage.getItem('currentUser'));
-if (!user || user.role !== 'client') {
-    window.location.href = 'index.html';
-}
+// إدارة الجلسة ودعم الرابط السحري المباشر
+let user = JSON.parse(localStorage.getItem('currentUser'));
 
-// تشغيل النظام بالكامل بأمان بعد تحميل المتصفح وعناصر الـ HTML
-document.addEventListener('DOMContentLoaded', () => {
+async function initClientSession() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const magicToken = urlParams.get('token');
+
+    // 1. إذا تم الدخول عبر الرابط السحري
+    if (magicToken) {
+        try {
+            const { data, error } = await _supabase
+                .from('clients')
+                .select('*')
+                .eq('magic_token', magicToken)
+                .maybeSingle();
+
+            if (data && data.role === 'client') {
+                user = data;
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                // إخفاء التوكن من شريط العنوان لحماية الخصوصية ومظهر احترافي
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+                console.warn("⚠️ الرابط السحري غير صالح أو الحساب غير موجود.");
+            }
+        } catch (err) {
+            console.error("❌ خطأ أثناء فحص الرابط السحري:", err);
+        }
+    }
+
+    // 2. فحص أمان تسجيل الدخول (إذا لم يكن مسجلاً يعاد لصفحة الدخول)
+    if (!user || user.role !== 'client') {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // 3. تهيئة واجهة المستخدم وتحميل البيانات
     if (user && user.name) {
-        document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
+        const welcomeEl = document.getElementById('user-welcome');
+        if (welcomeEl) welcomeEl.innerText = `مرحباً، ${user.name}`;
         loadClientData(user);
     }
 
@@ -47,9 +76,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const usd = parseFloat(amountInput.value) || 0;
             const rate = (user && user.exchange_rate) ? parseInt(user.exchange_rate) : 230;
             const dzd = Math.round(usd * rate);
-            document.getElementById('deposit-dzd-preview').innerText = `${dzd.toLocaleString('fr-FR')} دج`;
+            const previewEl = document.getElementById('deposit-dzd-preview');
+            if (previewEl) previewEl.innerText = `${dzd.toLocaleString('fr-FR')} دج`;
         });
     }
+}
+
+// تشغيل النظام بعد تحميل المتصفح وعناصر الـ HTML
+document.addEventListener('DOMContentLoaded', () => {
+    initClientSession();
 });
 
 // ==========================================
@@ -337,6 +372,11 @@ async function loadClientData(client) {
 
     // تحميل وعرض كشف الحساب المالي للمحفظة
     await loadClientWalletLedger(activeClient);
+
+    // تشغيل محرك إشعارات الهاتف الذكية (الحد الأدنى + تأخر الدفع + تنبيهات الأدمن الفورية)
+    if (typeof window.initClientSmartNotifications === 'function') {
+        window.initClientSmartNotifications(activeClient, finalBalanceUsd, exchangeRate);
+    }
 }
 
 // ==========================================

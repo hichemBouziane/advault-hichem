@@ -1,0 +1,59 @@
+name: Build AdVault Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Project Files
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: ☕ Setup Java JDK 17 (Required for Android Build)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🤖 Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 📦 Prepare Web Assets & Capacitor Project
+        run: |
+          mkdir -p www
+          cp -r *.html *.json *.js css js icons www/ 2>/dev/null || true
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "AdVault" "com.advault.app" --web-dir www
+          npx cap add android
+
+      - name: 🎨 Set Custom AdVault App Icon
+        run: |
+          if [ -f "icons/icon-512.png" ]; then
+            cp icons/icon-512.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png || true
+            cp icons/icon-512.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png || true
+            cp icons/icon-192.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png || true
+          fi
+
+      - name: 🔨 Build Standalone Android APK
+        run: |
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ../AdVault.apk
+
+      - name: 📤 Upload AdVault.apk Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdVault-Android-APK
+          path: AdVault.apk
+          retention-days: 90

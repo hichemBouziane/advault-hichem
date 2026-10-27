@@ -3,7 +3,15 @@
 // ==========================================
 const SUPABASE_URL = "https://uljdazwcjxogpymvbflq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const localUser = JSON.parse(localStorage.getItem('currentUser'));
+const headers = {};
+if (localUser && localUser.session_token) {
+    headers['x-session-token'] = localUser.session_token;
+}
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers }
+});
 
 const user = JSON.parse(localStorage.getItem('currentUser'));
 if (!user || user.role !== 'client') {
@@ -34,6 +42,8 @@ async function fetchClientInfoAndBalance() {
             .single();
         clientInfo = client || user;
 
+        const exchangeRate = clientInfo.exchange_rate || 260;
+
         // 2. جلب الحملات النشطة
         const { data: campaigns } = await _supabase
             .from('facebook_campaigns')
@@ -57,9 +67,18 @@ async function fetchClientInfoAndBalance() {
 
         let totalPaidEuro = payments?.reduce((sum, item) => sum + parseFloat(item.amount_euro || 0), 0) || 0;
 
+        // 4. جلب تكاليف الخدمات النشطة والمعلقة لخصمها
+        const { data: serviceRequests } = await _supabase
+            .from('service_requests')
+            .select('price_usd')
+            .eq('client_id', user.id)
+            .eq('status', 'pending');
+
+        let totalServicesCostUsd = serviceRequests?.reduce((sum, item) => sum + parseFloat(item.price_usd || 0), 0) || 0;
+
         // الرصيد المتوفر بالدولار
-        const remainingEuro = totalSpendWithProfit - totalPaidEuro;
-        clientBalanceUsd = remainingEuro < 0 ? -remainingEuro : 0;
+        let adsBalanceUsd = totalPaidEuro - totalSpendWithProfit;
+        clientBalanceUsd = adsBalanceUsd - totalServicesCostUsd;
     } catch (e) {
         console.error("Error computing client balance:", e);
         clientBalanceUsd = 0;
@@ -84,6 +103,13 @@ async function loadServices() {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
+
+        // جلب جميع تقييمات الخدمات من قاعدة البيانات
+        const { data: reviews } = await _supabase
+            .from('service_reviews')
+            .select('service_id, rating');
+
+        window.allReviews = reviews || [];
 
         allServices = data || [];
         renderCategories();
@@ -151,10 +177,11 @@ function renderServices() {
     const grid = document.getElementById('services-grid');
     grid.innerHTML = '';
 
-    // تصفية المصفوفة
+    // تصفية المصفوفة واستبعاد غير المعتمدة
+    const approvedOnly = allServices.filter(s => s.is_approved !== false);
     const filtered = selectedCategory === 'الكل'
-        ? allServices
-        : allServices.filter(s => s.category === selectedCategory);
+        ? approvedOnly
+        : approvedOnly.filter(s => s.category === selectedCategory);
 
     if (filtered.length === 0) {
         grid.innerHTML = `
@@ -214,6 +241,26 @@ function renderServices() {
             btnDisabled = 'disabled';
         }
 
+        // حساب التقييمات ومتوسط النجوم
+        const srvReviews = (window.allReviews || []).filter(r => r.service_id === srv.id);
+        let ratingHtml = '';
+        if (srvReviews.length > 0) {
+            const avg = srvReviews.reduce((sum, r) => sum + r.rating, 0) / srvReviews.length;
+            ratingHtml = `
+                <div class="flex items-center gap-1 text-amber-500">
+                    <span class="text-xs">★</span>
+                    <span class="text-[9px] font-bold text-gray-500">${avg.toFixed(1)} (${srvReviews.length} تقييم)</span>
+                </div>
+            `;
+        } else {
+            ratingHtml = `
+                <div class="flex items-center gap-1 text-gray-300">
+                    <span class="text-xs">★</span>
+                    <span class="text-[9px] font-semibold text-gray-400">لا تقييمات</span>
+                </div>
+            `;
+        }
+
         const card = document.createElement('div');
         card.className = "bg-white rounded-3xl p-5 border border-gray-150 shadow-sm hover:shadow-md transition duration-300 flex flex-col justify-between space-y-4";
         card.innerHTML = `
@@ -229,7 +276,10 @@ function renderServices() {
                     </div>
                 </div>
                 <div>
-                    <span class="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">${srv.category}</span>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">${srv.category}</span>
+                        ${ratingHtml}
+                    </div>
                     <h3 class="text-sm font-bold text-gray-800 mt-1.5">${srv.title}</h3>
                     <p class="text-[11px] text-gray-400 font-semibold mt-1 leading-normal">${srv.description}</p>
                 </div>
@@ -267,7 +317,7 @@ async function requestService(serviceId) {
 
     try {
         // 2. إرسال الطلب المعلق إلى جدول service_requests
-        const { error: insertErr } = await _supabase
+        const { data: requestData, error: insertErr } = await _supabase
             .from('service_requests')
             .insert([{
                 client_id: user.id,
@@ -275,31 +325,63 @@ async function requestService(serviceId) {
                 service_id: srv.id,
                 service_title: srv.title,
                 price_usd: srv.price_usd,
+                provider_id: srv.provider_id || null,
                 status: 'pending'
-            }]);
+            }])
+            .select()
+            .single();
 
         if (insertErr) throw insertErr;
 
+        // 2.5 إرسال رسالة تلقائية "السلام عليكم" في الشات لبدء المحادثة
+        if (requestData && requestData.id) {
+            try {
+                const recipientId = srv.provider_id || "1746721547";
+                await _supabase
+                    .from('chat_messages')
+                    .insert([{
+                        request_id: requestData.id,
+                        sender_id: user.id,
+                        recipient_id: recipientId,
+                        message_text: "السلام عليكم"
+                    }]);
+            } catch (errChat) {
+                console.error("Error inserting initial message:", errChat);
+            }
+        }
+
         // 3. إرسال تنبيه تليجرام للأدمن فورا
-        const priceText = isFree ? 'مجاناً' : `$${parseFloat(srv.price_usd).toFixed(2)}`;
-        const telegramMessage = `🛍️ طلب شراء خدمة جديد معلق:
-👤 الزبون: ${user.name || 'زبون تجاري'}
-📦 الخدمة: ${srv.title}
-💵 السعر: ${priceText}
-يرجى المراجعة والقبول من لوحة التحكم.`;
+        const telegramMessage = `الزبون ${user.name || 'زبون تجاري'} عمل خدمة جديدة (${srv.title}) ادخل لقبولها`;
         await sendTelegramNotification(telegramMessage);
 
-        showToast("تم تقديم طلبك بنجاح! جاري تحويلك لواتساب الشركة...", "success");
+        // 3.5 إرسال تنبيه تليجرام المباشر للشريك (الخدماتي) في حال ربط التليجرام الخاص به
+        if (srv.provider_id) {
+            try {
+                const { data: prov } = await _supabase
+                    .from('clients')
+                    .select('telegram_chat_id')
+                    .eq('id', srv.provider_id)
+                    .single();
 
-        // 4. تحويل لواتساب بعد قليل
-        const companyNumber = "213657693583";
-        const customText = srv.whatsapp_custom_text || `مرحباً، أود الاستفسار عن خدمة (${srv.title}) المعروضة في بوابة الخدمات.`;
-        const encodedText = encodeURIComponent(customText);
-        const whatsappUrl = `https://wa.me/${companyNumber}?text=${encodedText}`;
+                if (prov && prov.telegram_chat_id) {
+                    const providerMsg = `الزبون ${user.name || 'زبون تجاري'} عمل طلب جديد على خدمتك (${srv.title}) ادخل للموقع لقبوله`;
+                    const BOT_TOKEN_PROV = "8636070898:AAFA5OZwJ81WqVvC9TfaudmOjLKV4r43tcM";
+                    const provUrl = `https://api.telegram.org/bot${BOT_TOKEN_PROV}/sendMessage?chat_id=${prov.telegram_chat_id}&text=${encodeURIComponent(providerMsg)}`;
+                    await fetch(provUrl);
+                }
+            } catch (errProv) {
+                console.error("Failed to notify provider on telegram:", errProv);
+            }
+        }
+
+        showToast("تم تقديم طلبك بنجاح! جاري تحويلك لدردشة الخدمة...", "success");
 
         setTimeout(() => {
-            window.open(whatsappUrl, '_blank');
-            location.reload();
+            if (requestData && requestData.id) {
+                window.location.href = `inbox.html?request_id=${requestData.id}&new_request=true`;
+            } else {
+                location.reload();
+            }
         }, 1500);
 
     } catch (err) {

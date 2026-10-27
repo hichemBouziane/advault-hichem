@@ -304,7 +304,7 @@ async function loadAdminData() {
     adminTable.innerHTML = '';
     if (!clients || clients.length === 0) {
         window.allClients = [];
-        adminTable.innerHTML = '<tr><td colspan="8" class="p-4 text-center text-gray-400">لا يوجد زبائن حالياً.</td></tr>';
+        adminTable.innerHTML = '<tr><td colspan="10" class="p-4 text-center text-gray-400">لا يوجد زبائن حالياً.</td></tr>';
         return;
     }
 
@@ -427,10 +427,158 @@ async function loadAdminData() {
                 <td class="p-3 ${client.remainingUsdClass}">${client.remainingUsdText}</td>
                 <td class="p-3 font-semibold text-purple-600">${client.remainingDaysText}</td>
                 <td class="p-3 text-center">${transferActionBtn}</td>
+                <td class="p-3 text-center">
+                    <div class="flex items-center justify-center gap-1.5">
+                        <button onclick="sendClientWhatsAppReport('${client.id}')"
+                            title="إرسال تقرير مالي ورابط الدخول المباشر عبر واتساب"
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-2.5 py-1.5 rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap">
+                            <span>📲</span> تقرير واتساب
+                        </button>
+                        <button onclick="sendClientMobileAlert('${client.id}')"
+                            title="إرسال إشعار فوري إلى تطبيق هاتف الزبون"
+                            class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-2.5 py-1.5 rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap">
+                            <span>🔔</span> تنبيه للهاتف
+                        </button>
+                    </div>
+                </td>
             </tr>`;
     }
 
     await updateAdminCharts(clientSpendNames, clientSpendValues);
+}
+
+// ==========================================
+// 🔔 إرسال إشعار فوري لتطبيق هاتف الزبون (الحد الأدنى أو تأخر الدفع)
+// ==========================================
+async function sendClientMobileAlert(clientId) {
+    try {
+        const client = (window.allClients || []).find(c => c.id === clientId);
+        if (!client) {
+            showToast("تعذر العثور على بيانات الزبون.", "error");
+            return;
+        }
+
+        const debtDzd = Math.round(client.finalDebtDzd || 0);
+        const remainingUsd = Math.abs(client.remainingEuro || 0).toFixed(2);
+
+        let alertTitle = '';
+        let alertBody = '';
+        let alertType = 'general';
+
+        if (debtDzd > 0) {
+            alertTitle = '🔴 تذكير بتسوية المستحقات الإعلانية';
+            alertBody = `مرحباً ${client.name}، يوجد مبلغ مستحق على حسابكم بقيمة ${debtDzd}دج (${remainingUsd}$). يرجى تسوية الرصيد لضمان استمرار حملاتكم الإعلانية دون توقف.`;
+            alertType = 'overdue_debt';
+        } else {
+            alertTitle = '⚠️ تنبيه: رصيدك الإعلاني قارب على النفاد';
+            alertBody = `مرحباً ${client.name}، رصيدكم المتبقي حالياً هو ${Math.abs(debtDzd)}دج (${remainingUsd}$). يرجى شحن الحساب لتفادي توقف الإعلانات.`;
+            alertType = 'low_balance';
+        }
+
+        const { error } = await _supabase
+            .from('client_notifications')
+            .insert([{
+                client_id: client.id,
+                title: alertTitle,
+                body: alertBody,
+                type: alertType,
+                is_read: false
+            }]);
+
+        if (error) throw error;
+
+        showToast(`تم إرسال إشعار الهاتف الفوري إلى (${client.name}) بنجاح 🔔`);
+    } catch (err) {
+        console.error("❌ خطأ في إرسال إشعار الهاتف:", err);
+        showToast("يرجى تفعيل جدول client_notifications في Supabase أولاً", "error");
+    }
+}
+
+// ==========================================
+// 📲 إرسال تقرير مالي مع الرابط السحري المباشر عبر واتساب
+// ==========================================
+async function sendClientWhatsAppReport(clientId) {
+    try {
+        const client = (window.allClients || []).find(c => c.id === clientId);
+        if (!client) {
+            showToast("تعذر العثور على بيانات الزبون.", "error");
+            return;
+        }
+
+        // التأكد من وجود توكن سحري عشوائي ومعقد للزبون، وإن لم يتوفر يتم إنشاؤه وتحديثه
+        let token = client.magic_token;
+        if (!token) {
+            token = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : (
+                'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                })
+            );
+            const { error } = await _supabase.from('clients').update({ magic_token: token }).eq('id', clientId);
+            if (!error) {
+                client.magic_token = token;
+            }
+        }
+
+        // بناء الرابط المباشر المعقد
+        const origin = window.location.origin;
+        let pathname = window.location.pathname;
+        const lastSlash = pathname.lastIndexOf('/');
+        const basePath = lastSlash !== -1 ? pathname.substring(0, lastSlash + 1) : '/';
+        const magicUrl = `${origin}${basePath}client.html?token=${token}`;
+
+        // تجهيز نصوص التقرير المالي
+        const clientName = client.name || 'عميلنا الكريم';
+        const adSpendUsd = (client.facebookSpendWithProfit || 0).toFixed(2);
+        const totalPaidUsd = (client.totalPaidEuro || 0).toFixed(2);
+        const debtDzd = client.finalDebtDzd || 0;
+        const remainingEuro = client.remainingEuro || 0;
+        const dzdInt = Math.abs(Math.round(debtDzd));
+        const usdRemaining = Math.abs(remainingEuro).toFixed(2);
+
+        let statusText = '';
+        if (debtDzd > 0) {
+            statusText = `\u{1F534} *المبلغ المستحق (دين):* ${dzdInt}دج (${usdRemaining}$)`;
+        } else if (debtDzd < 0) {
+            statusText = `\u{1F7E2} *الرصيد المتبقي لصالحكم:* ${dzdInt}دج (${usdRemaining}$)`;
+        } else {
+            statusText = `\u2705 *حسابكم متوازن تماماً:* 0دج (0.00$)`;
+        }
+
+        let daysText = '';
+        if (remainingEuro < 0) {
+            daysText = `\n\u23F3 *الأيام التقديرية المتبقية:* ${client.remainingDaysText || '-'}`;
+        }
+
+        const message = 
+`مرحباً أخي ${clientName} \u{1F338}
+إليك التقرير المالي المحدث لحسابك الإعلاني على منصة AdVault:
+
+\u{1F4CA} *إجمالي مصاريف الإعلانات:* ${adSpendUsd}$
+\u{1F4B5} *إجمالي الدفعات المسجلة:* ${totalPaidUsd}$
+${statusText}${daysText}
+
+\u{1F517} *رابط حسابك المباشر (للمتابعة بضغطة واحدة دون الحاجة لتسجيل الدخول):*
+${magicUrl}
+
+شكراً لتعاملكم معنا \u2728`;
+
+        let rawPhone = client.phone || '';
+        let cleanPhone = rawPhone.replace(/[^0-9+]/g, '');
+        if (cleanPhone.startsWith('+')) cleanPhone = cleanPhone.substring(1);
+        if (cleanPhone.startsWith('00')) cleanPhone = cleanPhone.substring(2);
+        if (cleanPhone.startsWith('0')) cleanPhone = '213' + cleanPhone.substring(1);
+
+        const waUrl = cleanPhone 
+            ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+            : `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+        window.open(waUrl, '_blank');
+        showToast("تم فتح واتساب وتجهيز التقرير والرابط السحري بنجاح 🚀", "success");
+    } catch (err) {
+        console.error("❌ خطأ في إرسال تقرير الواتساب:", err);
+        showToast("حدث خطأ أثناء إنشاء تقرير الواتساب", "error");
+    }
 }
 
 // ==========================================
@@ -1038,6 +1186,16 @@ async function submitManualPayment(event) {
             showSuccessNotification(`تم تسجيل دين إضافي بقيمة: ${amountDzd.toLocaleString('fr-FR')} دج على حساب (${clientName})`);
         } else {
             showSuccessNotification(`تم الحفظ بنجاح: ${amountDzd.toLocaleString('fr-FR')} دج`);
+            // إرسال إشعار فوري لتطبيق هاتف الزبون بتأكيد استلام الدفعة
+            try {
+                await _supabase.from('client_notifications').insert([{
+                    client_id: clientId,
+                    title: '✅ تم شحن حسابك الإعلاني بنجاح!',
+                    body: `تم تسجيل دفعة جديدة في حسابكم بقيمة ${Math.round(amountDzd)}دج (${amountEuro.toFixed(2)}$). شكراً لثقتكم بنا.`,
+                    type: 'payment_added',
+                    is_read: false
+                }]);
+            } catch (_) {}
         }
         closePaymentModal();
         if (typeof loadAdminData === 'function') loadAdminData();

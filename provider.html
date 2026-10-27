@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdVault الشركاء — لوحة مقدم الخدمة</title>
+    <!-- Tailwind CSS v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/index.css">
+
+    <!-- Script to load dark/light mode preference early -->
+    <script>
+        (function () {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col font-sans">
+
+    <!-- الحاوية الرئيسية (تُزيح لليسار في الحاسوب لترك مساحة للقائمة الجانبية الثابتة على اليمين) -->
+    <div class="flex-1 md:mr-64 flex flex-col min-h-screen">
+
+        <!-- الهيدر -->
+        <header class="bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center gap-4 flex-wrap sticky top-0 z-20">
+            <div>
+                <h1 class="text-xl font-bold text-gray-800" id="user-welcome">مرحباً بك شريكنا الكريم</h1>
+                <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-md font-semibold">بوابة مقدمي الخدمات (الخدماتيين)</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- زر القائمة الجانبية (الهاتف فقط) -->
+                <button onclick="openMenu()" class="md:hidden text-gray-600 hover:text-indigo-600 transition cursor-pointer p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="p-6 flex-1 space-y-6">
+
+            <!-- ========================================== -->
+            <!-- 1. تبويب الرئيسية والطلبات الواردة -->
+            <!-- ========================================== -->
+            <div id="dashboard-view" class="space-y-6 block">
+                <!-- الكروت الإحصائية للمحفظة والنشاط -->
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                        <p class="text-gray-400 text-xs font-semibold mb-1">الرصيد القابل للسحب</p>
+                        <p class="text-2xl font-black text-emerald-600" id="wallet-balance">$0.00</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                        <p class="text-gray-400 text-xs font-semibold mb-1">مبالغ معلقة قيد التنفيذ</p>
+                        <p class="text-2xl font-black text-amber-600" id="wallet-locked-balance">$0.00</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                        <p class="text-gray-400 text-xs font-semibold mb-1">إجمالي طلبات العمل</p>
+                        <p class="text-2xl font-black text-indigo-700" id="wallet-total-requests">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                        <p class="text-gray-400 text-xs font-semibold mb-1">طلبات تم إنجازها</p>
+                        <p class="text-2xl font-black text-emerald-500" id="wallet-completed-requests">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                        <p class="text-gray-400 text-xs font-semibold mb-1">طلبات مرفوضة</p>
+                        <p class="text-2xl font-black text-red-500" id="wallet-rejected-requests">0</p>
+                    </div>
+                </div>
+
+                <!-- قسم مخططات وتحليلات الأداء للشريك -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- مخطط 1: توزيع حالة الطلبات -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                        <h4 class="font-bold text-gray-700 text-sm mb-3">📊 توزيع حالة الطلبات المعالجة</h4>
+                        <div class="h-48 relative flex items-center justify-center">
+                            <canvas id="provider-status-chart"></canvas>
+                        </div>
+                    </div>
+                    <!-- مخطط 2: أرباح الشريك الشهرية -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                        <h4 class="font-bold text-gray-700 text-sm mb-3">📈 تطور الأرباح التراكمية المحققة ($)</h4>
+                        <div class="h-48 relative flex items-center justify-center">
+                            <canvas id="provider-revenue-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            <!-- جدول طلبات العمل الواردة -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-700 text-sm flex items-center gap-1.5">
+                            <span>🛍️</span> طلبات العمل الواردة من الزبائن
+                        </h3>
+                        <span id="requests-count-badge" class="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">0 طلب</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-sm border-collapse">
+                            <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                                <tr>
+                                    <th class="p-4 font-semibold">الزبون</th>
+                                    <th class="p-4 font-semibold">الخدمة المطلوبة</th>
+                                    <th class="p-4 text-center font-semibold">القيمة الكلية ($)</th>
+                                    <th class="p-4 text-center font-semibold">تاريخ الطلب</th>
+                                    <th class="p-4 text-center font-semibold">حالة الطلب</th>
+                                    <th class="p-4 text-center font-semibold">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="provider-requests-table" class="divide-y divide-gray-100 text-sm">
+                                <tr>
+                                    <td colspan="6" class="p-8 text-center text-gray-400 font-bold">جاري تحميل الطلبات...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 2. تبويب خدماتي وإضافة خدمة جديدة -->
+            <!-- ========================================== -->
+            <div id="services-view" class="space-y-6 hidden">
+                <div class="flex justify-between items-center flex-wrap gap-3">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">📦 قائمة خدماتي المعروضة</h2>
+                    <button onclick="openAddServiceModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 shadow">
+                        ➕ إضافة خدمة جديدة للمراجعة
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="provider-services-list">
+                    <!-- سيتم حقن الخدمات هنا ديناميكياً -->
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 3. تبويب سحب الأرباح والعمليات المالية -->
+            <!-- ========================================== -->
+            <div id="payouts-view" class="space-y-6 hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 max-w-xl mx-auto space-y-4">
+                    <h3 class="font-bold text-gray-800 text-base border-b border-gray-100 pb-3">💰 طلب سحب الأرباح الحالية</h3>
+                    
+                    <div class="bg-emerald-50 text-emerald-800 p-4 rounded-xl flex justify-between items-center">
+                        <span class="text-xs font-semibold">أرباحك المتوفرة حالياً للسحب:</span>
+                        <span class="text-xl font-black" id="payout-balance-val">$0.00</span>
+                    </div>
+
+                    <form id="payout-form" onsubmit="submitPayoutRequest(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">طريقة الدفع المطلوبة:</label>
+                            <select id="payout-method" required class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-gray-700 bg-gray-50">
+                                <option value="Baridimob">بريدي موب (Baridimob)</option>
+                                <option value="CCP">حساب بريدي جاري (CCP)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">المبلغ المطلوب سحبه بالدولار ($):</label>
+                            <input type="number" step="0.01" min="1" id="payout-amount-usd" required oninput="calcPayoutDzd()"
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-center">
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-center">
+                            <span class="text-[10px] text-gray-400 font-semibold block">المبلغ التقريبي المستلم بالدينار (سعر الصرف 220 دج):</span>
+                            <span class="text-sm font-black text-indigo-700" id="payout-dzd-preview">0 دج</span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">تفاصيل الحساب (رقم RIP أو الحساب، والاسم الكامل):</label>
+                            <textarea id="payout-details" rows="3" required placeholder="يرجى كتابة رقم الـ RIP والاسم واللقب بدقة تامة لتسهيل التحويل المالي..."
+                                class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                        </div>
+                        <button type="submit" id="payout-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition cursor-pointer">
+                            📥 تقديم طلب السحب
+                        </button>
+                    </form>
+                </div>
+
+                <!-- جدول تاريخ طلبات السحب -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-gray-100 bg-slate-50/50">
+                        <h3 class="font-bold text-gray-700 text-sm">سجل عمليات سحب الأرباح السابقة</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-sm">
+                            <thead class="bg-gray-50 text-gray-500 text-xs border-b border-gray-100">
+                                <tr>
+                                    <th class="p-3">تاريخ الطلب</th>
+                                    <th class="p-3">المبلغ ($)</th>
+                                    <th class="p-3">المبلغ (دج)</th>
+                                    <th class="p-3">طريقة الدفع</th>
+                                    <th class="p-3 text-center">الحالة</th>
+                                    <th class="p-3">ملاحظات الإدارة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payout-requests-history" class="divide-y divide-gray-100 text-xs">
+                                <tr>
+                                    <td colspan="6" class="p-4 text-center text-gray-400">لا توجد أي طلبات سحب أرباح سابقة.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- 4. تبويب الإعدادات الشخصية وتغيير كلمة السر -->
+            <!-- ========================================== -->
+            <div id="settings-view" class="space-y-6 hidden">
+                <div class="bg-gradient-to-r from-indigo-750 to-indigo-900 text-white rounded-[2rem] p-6 text-center shadow-lg relative overflow-hidden">
+                    <div class="dots-pattern"></div>
+                    <div class="relative z-10">
+                        <h3 class="text-xl font-bold">⚙️ مركز الإعدادات والربط</h3>
+                        <p class="text-xs text-indigo-100 mt-2">قم بزيادة أمان حسابك وربط حساب تليجرام لاستلام التنبيهات الفورية</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- كارت 1: ربط تليجرام الشركاء -->
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4 text-right">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <span>💬</span> إشعارات التليجرام الفورية لطلبات العمل
+                        </h4>
+                        <p class="text-[11px] text-gray-400 font-semibold leading-relaxed">
+                            اربط حسابك بالبوت الرسمي لتستقبل إشعارات فورية على هاتفك في تليجرام فور إرسال الزبون لطلب جديد على خدماتك.
+                        </p>
+                        <div class="space-y-3">
+                            <a href="https://t.me/userinfobot" target="_blank"
+                                class="w-full text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 rounded-xl text-xs transition inline-block text-decoration-none">
+                                🔍 الحصول على معرّف التليجرام الخاص بك
+                            </a>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">معرّف التليجرام الخاص بك (Chat ID):</label>
+                                <input type="text" id="telegram-chat-id-input" placeholder="مثال: 1746721547"
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-center">
+                            </div>
+                            <button onclick="saveTelegramChatId()"
+                                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                                💾 حفظ معرّف التليجرام
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- كارت 2: تغيير كلمة المرور للشريك -->
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4 text-right">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <span>🔒</span> تغيير كلمة المرور
+                        </h4>
+                        <form onsubmit="changeProviderPassword(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">كلمة المرور الجديدة:</label>
+                                <input type="password" id="provider-new-pass" required placeholder="••••••••"
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">💾 حفظ كلمة المرور الجديدة</button>
+                        </form>
+                    </div>
+
+                    <!-- كارت 3: حفظ معرف RedotPay للشريك -->
+                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4 text-right">
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <span>💳</span> معرف RedotPay الخاص بك
+                        </h4>
+                        <p class="text-[11px] text-gray-400 font-semibold leading-relaxed">
+                            أدخل معرف RedotPay الخاص بك ليتم استخدامه تلقائياً بواسطة المدير عند معالجة طلبات سحب الأرباح والعمولات.
+                        </p>
+                        <form onsubmit="saveProviderRedotPay(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">معرف RedotPay (ID):</label>
+                                <input type="text" id="provider-redotpay-id" required placeholder="مثال: 1999499801"
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-center">
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">💾 حفظ المعرف</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div> <!-- نهاية حاوية المحتوى الرئيسية flex-1 wrapper -->
+
+    <!-- ===== القائمة الجانبية المحدثة لمقدمي الخدمات ===== -->
+    <div id="side-menu-overlay" onclick="closeMenu()" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden z-40 transition-opacity md:hidden"></div>
+    
+    <div id="side-menu" class="fixed top-0 right-0 h-full w-64 bg-white border-l border-gray-150 z-40 md:z-30 transform translate-x-full md:translate-x-0 transition-transform duration-300 flex flex-col shadow-2xl md:shadow-none">
+        
+        <!-- الهيدر -->
+        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-indigo-50">
+            <h2 class="font-bold text-indigo-800 text-lg flex items-center gap-1">🛡️ بوابة الخدمات</h2>
+            <button onclick="closeMenu()" class="md:hidden text-gray-500 hover:text-red-500 text-2xl font-bold cursor-pointer leading-none">&times;</button>
+        </div>
+        
+        <!-- روابط الملاحة -->
+        <div class="p-4 flex flex-col gap-2">
+            <button onclick="switchTab('dashboard')" class="w-full text-right flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                🏠 لوحة التحكم والطلبات
+            </button>
+            <button onclick="switchTab('services')" class="w-full text-right flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                📦 إدارة خدماتي الخاصة
+            </button>
+            <a href="inbox.html" class="w-full text-right flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                💬 مركز المحادثات والدردشة
+            </a>
+            <button onclick="switchTab('payouts')" class="w-full text-right flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                💰 سحب الأرباح
+            </button>
+            <button onclick="switchTab('settings')" class="w-full text-right flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold px-4 py-3 rounded-xl text-sm transition cursor-pointer">
+                ⚙️ الإعدادات الشخصية
+            </button>
+        </div>
+        
+        <!-- أسفل القائمة: تسجيل الخروج -->
+        <div class="mt-auto p-4 border-t border-gray-100 flex flex-col gap-2 bg-gray-50/50">
+            <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer">
+                🚪 تسجيل الخروج
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== نافذة رفض طلب زبون مع كتابة السبب ===== -->
+    <div id="reject-modal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden text-right">
+            <div class="bg-red-600 p-4 text-white text-center font-bold text-lg">
+                ❌ رفض طلب الخدمة
+            </div>
+            <form onsubmit="submitReject(event)" class="p-6 space-y-4">
+                <input type="hidden" id="reject-request-id">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-1">يرجى كتابة سبب الرفض بالتفصيل:</label>
+                    <textarea id="reject-reason" required rows="4" placeholder="مثال: يرجى رفع الملفات بصيغة مناسبة أو رقم الهاتف غير متاح..."
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+                    <p class="text-[10px] text-gray-400 mt-1 font-semibold">سيتم إرسال هذا السبب للزبون مباشرة في لوحته لإصلاحه.</p>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                        تأكيد الرفض
+                    </button>
+                    <button type="button" onclick="closeRejectModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== نافذة تسليم العمل النهائي للشريك ===== -->
+    <div id="deliver-work-modal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden text-right">
+            <div class="bg-emerald-600 p-4 text-white text-center font-bold text-sm flex items-center justify-center gap-1.5">
+                <span>📦 تسليم المشروع النهائي للزبون</span>
+            </div>
+            <form onsubmit="submitWorkDelivery(event)" class="p-6 space-y-4">
+                <input type="hidden" id="deliver-request-id">
+                
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1">ملف تسليم العمل النهائي (إجباري):</label>
+                    <input type="file" id="deliver-file-input" required class="w-full text-xs font-semibold text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+                    <p class="text-[9px] text-gray-400 mt-1 font-semibold">ارفع المنتج النهائي للمشروع (ZIP, PDF, MP4, PNG... حد أقصى 50MB).</p>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 text-xs font-bold mb-1">رسالة وملاحظات التسليم للزبون:</label>
+                    <textarea id="deliver-notes" required rows="3" placeholder="اكتب ملاحظاتك وتفاصيل ملفات المشروع..."
+                        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" id="deliver-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                        🚀 تسليم العمل النهائي
+                    </button>
+                    <button type="button" onclick="closeDeliverWorkModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== نافذة إضافة خدمة جديدة للخدماتي ===== -->
+    <div id="service-modal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden text-right">
+            <div class="bg-indigo-650 p-4 text-white text-center font-bold text-lg" id="modal-title">
+                📦 إضافة خدمة جديدة للمراجعة
+            </div>
+            <form id="service-form" onsubmit="submitAddService(event)" class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">عنوان الخدمة</label>
+                    <input type="text" id="service-title" required placeholder="مثال: مونتاج وتصميم الفيديوهات"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">وصف الخدمة</label>
+                    <textarea id="service-description" required rows="3" placeholder="تفاصيل الخدمة ومميزاتها التي ستظهر للزبائن..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">التصنيف / القسم</label>
+                        <input type="text" id="service-category" required placeholder="تصميم، مونتاج، كتابة..."
+                            class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">السعر المقترح بالدولار ($)</label>
+                        <input type="number" step="0.01" min="0" id="service-price" required placeholder="0.00"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">أيقونة تعبيرية (Emoji)</label>
+                    <input type="text" id="service-logo" placeholder="مثال: 🎨 أو 🎥" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center font-bold text-lg">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">مدة التنفيذ الافتراضية بالأيام (اختياري)</label>
+                    <input type="number" min="1" id="service-duration" value="3" placeholder="3"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" id="service-submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                        إرسال للمراجعة
+                    </button>
+                    <button type="button" onclick="closeServiceModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-sm transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-notification" class="fixed top-5 right-5 z-50 flex items-center gap-3 bg-white shadow-2xl rounded-2xl p-4 border-r-4 border-emerald-500 max-w-xs transform translate-x-80 opacity-0 transition-all duration-300 ease-out text-right hidden">
+        <div class="text-2xl" id="toast-icon">✅</div>
+        <div class="flex-1">
+            <h4 class="font-bold text-xs text-gray-800" id="toast-title">تمت العملية بنجاح</h4>
+            <p class="text-[10px] text-gray-500 mt-0.5 leading-normal" id="toast-msg-body">—</p>
+        </div>
+    </div>
+
+    <script>
+        function openMenu() {
+            document.getElementById('side-menu-overlay').classList.remove('hidden');
+            document.getElementById('side-menu').classList.remove('translate-x-full');
+        }
+        function closeMenu() {
+            document.getElementById('side-menu-overlay').classList.add('hidden');
+            document.getElementById('side-menu').classList.add('translate-x-full');
+        }
+    </script>
+    <script src="js/config.js?v=1.5"></script>
+    <script src="js/provider.js?v=1.5"></script>
+</body>
+
+</html>

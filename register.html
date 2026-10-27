@@ -42,7 +42,7 @@
         </div>
 
         <!-- Registration Form -->
-        <div id="register-form-container" class="space-y-6">
+        <form id="register-form" onsubmit="handleRegister(event)" class="space-y-6">
             <!-- Full Name Input -->
             <div class="space-y-1.5">
                 <label class="block text-sm font-black text-slate-700 dark:text-slate-300">الاسم الكامل</label>
@@ -62,7 +62,7 @@
                     <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                         <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
                     </div>
-                    <input type="text" id="register-phone" placeholder="06XXXXXXXX / 07XXXXXXXX"
+                    <input type="text" id="register-phone" name="username" autocomplete="username" placeholder="06XXXXXXXX / 07XXXXXXXX"
                         class="w-full pr-12 pl-4 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-800 dark:text-slate-100 font-semibold placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all duration-200 shadow-inner">
                 </div>
                 <p class="text-[10px] text-slate-400 dark:text-slate-500 font-bold">يرجى كتابة رقم الهاتف بشكل صحيح، حيث سيتم استخدامه لتسجيل الدخول والتواصل معك.</p>
@@ -80,8 +80,20 @@
                 </div>
             </div>
 
+            <!-- Password Input -->
+            <div class="space-y-1.5">
+                <label class="block text-sm font-black text-slate-700 dark:text-slate-300">كلمة السر</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </div>
+                    <input type="password" id="register-password" name="password" autocomplete="new-password" placeholder="أدخل كلمة السر الخاصة بك"
+                        class="w-full pr-12 pl-4 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-800 dark:text-slate-100 font-semibold placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all duration-200 shadow-inner">
+                </div>
+            </div>
+
             <!-- Submit Button -->
-            <button onclick="handleRegister()"
+            <button type="submit"
                 class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black py-4 rounded-2xl transition-all duration-300 shadow-xl shadow-purple-600/20 hover:shadow-purple-600/30 cursor-pointer transform hover:-translate-y-0.5 mt-2 text-base">
                 تقديم طلب التسجيل
             </button>
@@ -92,9 +104,9 @@
             <!-- Link Back to Login/Landing -->
             <div class="text-center pt-2 text-xs font-bold">
                 <span class="text-slate-400">لديك حساب بالفعل؟</span>
-                <a href="index.html" class="text-purple-600 dark:text-purple-400 hover:underline mr-1">سجل الدخول من هنا</a>
+                <a href="login.html" class="text-purple-605 dark:text-purple-400 hover:underline mr-1">سجل الدخول من هنا</a>
             </div>
-        </div>
+        </form>
 
         <!-- Success Container (Hidden initially) -->
         <div id="register-success-container" class="space-y-6 hidden text-center animate-[bounce_0.2s_ease-in-out_1]">
@@ -105,8 +117,8 @@
             <p class="text-sm text-slate-500 dark:text-slate-400 font-semibold leading-relaxed max-w-sm mx-auto">
                 لقد سجلنا بياناتك بنجاح. سيقوم وكلاؤنا بمراجعة الطلب والتواصل معك عبر الواتساب على الرقم الذي أدخلته لتفعيل حسابك وتزويدك ببيانات الدخول.
             </p>
-            <a href="index.html" class="inline-block bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black px-8 py-3.5 rounded-2xl transition shadow-lg shadow-purple-600/15 cursor-pointer">
-                العودة للرئيسية
+            <a href="login.html" class="inline-block bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black px-8 py-3.5 rounded-2xl transition shadow-lg shadow-purple-600/15 cursor-pointer">
+                الذهاب لتسجيل الدخول
             </a>
         </div>
 
@@ -123,23 +135,46 @@
     </div>
 
     <!-- Registration Logic -->
+    <script src="js/config.js"></script>
     <script>
         const SUPABASE_URL = "https://uljdazwcjxogpymvbflq.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        async function handleRegister() {
+        async function hashPassword(password) {
+            if (!password) return '';
+            try {
+                const msgBuffer = new TextEncoder().encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            } catch (e) {
+                console.error("Hashing failed", e);
+                return btoa(unescape(encodeURIComponent(password)));
+            }
+        }
+
+        async function handleRegister(event) {
+            if (event) event.preventDefault();
+
             const name = document.getElementById('register-name').value.trim();
             const phone = document.getElementById('register-phone').value.trim();
             const niche = document.getElementById('register-niche').value.trim();
+            const password = document.getElementById('register-password').value.trim();
             const errorElement = document.getElementById('register-error');
 
             errorElement.classList.add('hidden');
             errorElement.innerText = "";
 
             // Validation
-            if (!name || !phone || !niche) {
+            if (!name || !phone || !niche || !password) {
                 errorElement.innerText = "يرجى ملء جميع الحقول المطلوبة";
+                errorElement.classList.remove('hidden');
+                return;
+            }
+
+            if (password.length < 6) {
+                errorElement.innerText = "يجب أن تكون كلمة السر من 6 أحرف أو أرقام على الأقل";
                 errorElement.classList.remove('hidden');
                 return;
             }
@@ -169,9 +204,9 @@
                 // Generate a dummy email to satisfy potential NOT NULL database constraints
                 // Email format: phone@advault-pending.com
                 const dummyEmail = `${cleanPhone}@advault-pending.com`;
-                
-                // Password set to phone number initially (to log in later if approved)
-                const defaultPassword = cleanPhone;
+
+                // تشفير كلمة المرور
+                const hashedPassword = await hashPassword(password);
 
                 // Insert pending client request
                 const { error: insertError } = await _supabase
@@ -180,10 +215,12 @@
                         name: name,
                         phone: cleanPhone,
                         email: dummyEmail,
-                        password: defaultPassword,
+                        password: hashedPassword,
                         role: 'pending',
                         campaign_keyword: niche, // Storing business niche here
-                        exchange_rate: 230 // Default starting exchange rate
+                        exchange_rate: 260, // Default starting exchange rate
+                        show_campaigns_table: false, // لا يرى جدول الإعلانات افتراضياً
+                        show_payments_table: true // يرى جدول الدفعات افتراضياً
                     }]);
 
                 if (insertError) {
@@ -197,9 +234,9 @@
 💼 النشاط: ${niche}`;
                 await sendTelegramNotification(msg);
 
-                // Switch UI to success screen
-                document.getElementById('register-form-container').classList.add('hidden');
-                document.getElementById('register-success-container').classList.remove('hidden');
+                // تنبيه المستخدم وإعادة توجيهه فوراً لتفعيل حفظ كلمة المرور في المتصفح
+                alert("تم تقديم طلب التسجيل بنجاح! سيتم توجيهك الآن لصفحة تسجيل الدخول.");
+                window.location.href = 'login.html';
 
             } catch (err) {
                 console.error("Registration Error:", err);

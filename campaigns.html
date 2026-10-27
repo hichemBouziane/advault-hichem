@@ -112,7 +112,25 @@
     <script>
         const SUPABASE_URL     = "https://uljdazwcjxogpymvbflq.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        const localUser = JSON.parse(localStorage.getItem('currentUser'));
+        const headers = {};
+        if (localUser && localUser.session_token) {
+            headers['x-session-token'] = localUser.session_token;
+        }
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: { headers }
+        });
+        function isKeywordMatched(campaignName, keyword) {
+            if (!campaignName || !keyword) return false;
+            const cleanKeyword = keyword.trim();
+            if (!cleanKeyword) return false;
+            const escaped = cleanKeyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const isAscii = /^[a-zA-Z0-9_-]+$/.test(cleanKeyword);
+            const pattern = isAscii ? '\\b' + escaped + '\\b' : '(?:^|\\s|[.,_\\-/])' + escaped + '(?:$|\\s|[.,_\\-/])';
+            const regex = new RegExp(pattern, 'i');
+            return regex.test(campaignName);
+        }
 
         // ===== تحميل قائمة الزبائن =====
         async function loadClients() {
@@ -154,7 +172,7 @@
                 .select('campaign_name, facebook_spend_euro, updated_at');
 
             const campaigns = (allCampaigns || []).filter(c =>
-                c.campaign_name.toLowerCase().includes((keyword || '').toLowerCase())
+                isKeywordMatched(c.campaign_name, keyword)
             );
 
             // 2. جلب الدفعات
