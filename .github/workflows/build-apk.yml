@@ -8,6 +8,8 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: 📥 Checkout Project Files
         uses: actions/checkout@v4
@@ -57,3 +59,13 @@ jobs:
           name: AdVault-Android-APK
           path: AdVault.apk
           retention-days: 90
+
+      - name: 🚀 Publish Direct Download Release (AdVault.apk)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.0-mobile
+          name: "AdVault Mobile App (v2.0) 📱"
+          body: "ملف تطبيق الهاتف المباشر لمنصة AdVault (جاهز للتثبيت والرفع على Google Drive)"
+          files: AdVault.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
