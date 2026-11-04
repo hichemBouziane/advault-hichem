@@ -26,6 +26,28 @@
     <meta name="apple-mobile-web-app-title" content="AdVault">
     <link class="rounded-2xl" rel="apple-touch-icon" href="/icons/icon-192.png">
 
+    <!-- توجيه تلقائي فوري إذا كان المستخدم مسجلاً دخوله مسبقاً على هذا الجهاز -->
+    <script>
+        (function () {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('home') === '1') return;
+                const savedUser = JSON.parse(localStorage.getItem('currentUser'));
+                if (savedUser && savedUser.role) {
+                    if (savedUser.role === 'admin') {
+                        window.location.replace('admin.html');
+                    } else if (savedUser.role === 'provider') {
+                        window.location.replace('provider.html');
+                    } else if (savedUser.role === 'pending') {
+                        window.location.replace('pending.html');
+                    } else if (savedUser.role === 'client') {
+                        window.location.replace('client.html');
+                    }
+                }
+            } catch (_) {}
+        })();
+    </script>
+
     <!-- CSS custom animations -->
     <style>
         @keyframes float {

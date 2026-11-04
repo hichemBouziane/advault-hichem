@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="overflow-x-hidden">
 
 <head>
     <meta charset="UTF-8">
@@ -16,25 +16,41 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
 
-    <!-- Script to load dark/light mode preference early -->
+    <!-- Script to load dark/light mode preference early & auto-redirect if session active -->
     <script>
         (function () {
             const saved = localStorage.getItem('theme');
             if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
             }
+            try {
+                const savedUser = JSON.parse(localStorage.getItem('currentUser'));
+                if (savedUser && savedUser.role) {
+                    if (savedUser.role === 'admin') {
+                        window.location.replace('admin.html');
+                    } else if (savedUser.role === 'provider') {
+                        window.location.replace('provider.html');
+                    } else if (savedUser.role === 'pending') {
+                        window.location.replace('pending.html');
+                    } else if (savedUser.role === 'client') {
+                        window.location.replace('client.html');
+                    }
+                }
+            } catch (_) {}
         })();
     </script>
 </head>
 
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex items-center justify-center p-4 relative overflow-x-hidden transition-colors duration-300 font-sans">
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen w-full flex items-center justify-center p-4 relative overflow-x-hidden transition-colors duration-300 font-sans">
     
-    <!-- Decorative background blobs -->
-    <div class="absolute top-[-10%] right-[-5%] w-[30rem] h-[30rem] bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
-    <div class="absolute bottom-[-10%] left-[-5%] w-[30rem] h-[30rem] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <!-- Decorative background blobs wrapper (clipped to prevent horizontal scroll/shift) -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute top-[-10%] right-[-5%] w-[24rem] sm:w-[30rem] h-[24rem] sm:h-[30rem] bg-purple-500/10 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-[-10%] left-[-5%] w-[24rem] sm:w-[30rem] h-[24rem] sm:h-[30rem] bg-indigo-500/10 rounded-full blur-3xl"></div>
+    </div>
 
     <!-- Login Container Box -->
-    <div class="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-4xl min-h-[550px] flex flex-col lg:flex-row overflow-hidden border border-slate-200/50 dark:border-slate-800/50 relative z-10 text-right transition-colors">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2.5rem] shadow-xl w-full max-w-md lg:max-w-4xl min-h-[520px] mx-auto flex flex-col lg:flex-row overflow-hidden border border-slate-200/50 dark:border-slate-800/50 relative z-10 text-right transition-colors">
         
         <!-- Right Box - Promo Details (Hidden on Mobile) -->
         <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#2e0854] via-[#3b0a66] to-[#1a0433] p-12 flex-col justify-between text-white relative overflow-hidden">
@@ -80,7 +96,7 @@
         </div>
 
         <!-- Left Box - Auth Form -->
-        <form id="login-form" onsubmit="event.preventDefault(); handleLogin();" class="w-full lg:w-1/2 p-8 sm:p-12 md:p-14 flex flex-col justify-between bg-white dark:bg-slate-900 transition-colors">
+        <form id="login-form" onsubmit="event.preventDefault(); handleLogin();" class="w-full lg:w-1/2 p-5 sm:p-10 md:p-14 flex flex-col justify-between bg-white dark:bg-slate-900 transition-colors box-border">
             
             <!-- Form Header (Mobile Header) -->
             <div class="lg:hidden flex flex-col items-center text-center mb-6">

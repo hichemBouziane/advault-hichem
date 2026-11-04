@@ -2,6 +2,20 @@ const SUPABASE_URL = "https://uljdazwcjxogpymvbflq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_DGoBEde67ewtWtMlC4Nx9w_cuvSAmUc";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// استعادة بيانات الدخول المحفوظة وتفعيل "تذكرني" افتراضياً
+document.addEventListener('DOMContentLoaded', () => {
+    const rememberBox = document.getElementById('remember-me');
+    if (rememberBox) rememberBox.checked = true;
+
+    const savedPhone = localStorage.getItem('advault_saved_phone');
+    const savedPass = localStorage.getItem('advault_saved_pass');
+    const phoneInput = document.getElementById('login-phone');
+    const passInput = document.getElementById('login-password');
+
+    if (savedPhone && phoneInput) phoneInput.value = savedPhone;
+    if (savedPass && passInput) passInput.value = savedPass;
+});
+
 async function hashPassword(password) {
     if (!password) return '';
     try {
@@ -44,6 +58,16 @@ async function handleLogin() {
 
         const loggedUser = data[0];
         localStorage.setItem('currentUser', JSON.stringify(loggedUser));
+
+        // حفظ بيانات الدخول إذا كان خيار "تذكرني" مفعلاً
+        const rememberBox = document.getElementById('remember-me');
+        if (!rememberBox || rememberBox.checked) {
+            localStorage.setItem('advault_saved_phone', phone);
+            localStorage.setItem('advault_saved_pass', password);
+        } else {
+            localStorage.removeItem('advault_saved_phone');
+            localStorage.removeItem('advault_saved_pass');
+        }
 
         if (loggedUser.role === 'admin') {
             window.location.href = 'admin.html';

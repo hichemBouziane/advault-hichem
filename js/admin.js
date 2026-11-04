@@ -34,20 +34,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // التحقق الفوري من رتبة المستخدم في السيرفر لمنع تزوير جلسات الدخول
+    // ملاحظة: لا يتم تسجيل الخروج إذا كان الخطأ بسبب ضعف الإنترنت المؤقت في الهاتف
     try {
         const { data: isValid, error: roleErr } = await _supabase.rpc('verify_session_role', {
             p_user_id: user.id,
             p_expected_role: 'admin'
         });
-        if (roleErr || !isValid) {
+        if (!roleErr && isValid === false) {
             localStorage.removeItem('currentUser');
             window.location.href = 'login.html';
             return;
         }
-    } catch (_) {
-        localStorage.removeItem('currentUser');
-        window.location.href = 'login.html';
-        return;
+    } catch (netErr) {
+        console.warn("تعذر التحقق اللحظي من الشبكة، سيتم الإبقاء على الجلسة المحفوظة:", netErr);
     }
 
     document.getElementById('user-welcome').innerText = `مرحباً، ${user.name}`;
