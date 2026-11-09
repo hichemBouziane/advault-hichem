@@ -3058,13 +3058,14 @@ async function loadCompanyDebts() {
         });
 
         if (filteredDebts.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400 font-bold">لا توجد ديون مطابقة للفلتر المحدد.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-gray-400 font-bold">لا توجد ديون مطابقة للفلتر المحدد.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = '';
         filteredDebts.forEach(item => {
             const dateStr = item.due_date ? new Date(item.due_date).toLocaleDateString('ar-DZ') : '-';
+            const noteText = (item.notes && item.notes.trim()) ? item.notes.trim() : '-';
             const typeBadge = item.type === 'علي' 
                 ? `<span class="bg-red-50 text-red-655 border border-red-100 px-2 py-0.5 rounded font-black text-[10px]">🔴 عليّ (للغير)</span>`
                 : `<span class="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded font-black text-[10px]">🟢 لي (عند الغير)</span>`;
@@ -3085,6 +3086,7 @@ async function loadCompanyDebts() {
                 <td class="p-3">${typeBadge}</td>
                 <td class="p-3 text-center font-bold text-gray-650">$${parseFloat(item.amount_usd || 0).toFixed(2)}</td>
                 <td class="p-3 text-center font-bold ${item.type === 'علي' ? 'text-red-600' : 'text-emerald-600'}">${item.type === 'علي' ? '-' : '+'}${parseInt(item.amount_dzd || 0).toLocaleString('fr-FR')} دج</td>
+                <td class="p-3 text-gray-600 font-semibold max-w-[200px] break-words">${noteText}</td>
                 <td class="p-3 text-gray-450">${dateStr}</td>
                 <td class="p-3 text-center">${statusBadge}</td>
                 <td class="p-3 text-center flex items-center justify-center gap-1.5">
@@ -3103,7 +3105,7 @@ async function loadCompanyDebts() {
 
     } catch (e) {
         console.error("Error loading debts:", e);
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-red-500 font-bold">حدث خطأ أثناء تحميل سجل الديون.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-red-500 font-bold">حدث خطأ أثناء تحميل سجل الديون.</td></tr>`;
     }
 }
 
