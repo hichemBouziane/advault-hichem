@@ -667,37 +667,59 @@
                     </div>
                 </div>
 
+                <!-- 🆕 ملخص حسابات الأشخاص المجمع (مجموع ديون كل شخص + المسدد + المتبقي + سداد جزئي) -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="font-bold text-gray-700 text-xs flex items-center gap-1.5">
+                            <span>👥</span> ملخص حسابات الأشخاص (مجموع الديون والدفعات لكل شخص):
+                        </h4>
+                        <button onclick="filterDebtsByPerson('')" id="clear-person-filter-btn" class="hidden text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black px-3 py-1 rounded-xl cursor-pointer transition">
+                            🔄 عرض كل الأشخاص
+                        </button>
+                    </div>
+                    <div id="debt-persons-summary-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <!-- يتم توليد بطاقات الأشخاص تلقائياً عبر الجافاسكريبت -->
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- نموذج تسجيل دين جديد -->
+                    <!-- نموذج تسجيل دين جديد أو سداد دفعة -->
                     <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4 lg:col-span-1 text-right">
                         <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2">
-                            <span>✍️</span> تسجيل دين/التزام جديد
+                            <span>✍️</span> تسجيل معاملة دين / سداد دفعة
                         </h4>
-                        <form onsubmit="saveCompanyDebt(event)" id="debt-form" class="space-y-3">
-                            <div>
-                                <label class="block text-[10px] font-bold text-gray-500 mb-1">اسم الطرف الآخر (مثال: صديقي محمد):</label>
-                                <input type="text" id="debt-person-name" required placeholder="اسم الشخص أو الشركة..."
-                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        <form onsubmit="saveCompanyDebt(event)" id="debt-form" class="space-y-3" autocomplete="off">
+                            <div class="relative">
+                                <label class="block text-[10px] font-bold text-gray-500 mb-1">اسم الطرف الآخر (اختر من القائمة أو اكتب اسماً جديداً):</label>
+                                <input type="text" id="debt-person-name" required placeholder="ابدأ بكتابة اسم الشخص أو الشركة..."
+                                    oninput="handleDebtPersonInput()" onfocus="handleDebtPersonInput()"
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold">
+                                <!-- قائمة الاقتراحات الذكية للمدينين المسجلين -->
+                                <div id="debt-person-suggestions" class="hidden absolute z-30 top-full mt-1 inset-x-0 bg-white border border-gray-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-gray-50 text-xs"></div>
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">طبيعة المعاملة:</label>
-                                <select id="debt-type" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold">
-                                    <option value="علي">🔴 ديْن عليّ (أنا مدين له - بالناقص)</option>
-                                    <option value="لي">🟢 ديْن لي (هو مدين لي - بالزائد)</option>
+                                <select id="debt-type" onchange="checkDebtPaymentAlert()" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold">
+                                    <option value="علي">🔴 ديْن جديد عليّ (أخذت منه مال/سلعة - بالناقص)</option>
+                                    <option value="سداد_علي">💸 سداد دفعة من ديني (أرجعت له مالاً - ينقص ديني)</option>
+                                    <option value="لي">🟢 ديْن جديد لي (أعطيته مالاً كدين عليه - بالزائد)</option>
+                                    <option value="سداد_لي">💰 استلام دفعة من دينه (أرجع لي مالاً - ينقص دينه)</option>
                                 </select>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ بالدولار ($):</label>
-                                    <input type="number" step="0.01" min="0" id="debt-amount-usd" value="0" required
+                                    <input type="number" step="0.01" min="0" id="debt-amount-usd" value="0" required oninput="checkDebtPaymentAlert()"
                                         class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold text-center">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 mb-1">المبلغ بالدينار (دج):</label>
-                                    <input type="number" step="1" min="0" id="debt-amount-dzd" value="0" required
+                                    <input type="number" step="1" min="0" id="debt-amount-dzd" value="0" required oninput="checkDebtPaymentAlert()"
                                         class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold text-center">
                                 </div>
                             </div>
+                            <!-- 🔔 صندوق التنبيه الذكي للمقارنة مع رصيد/ديون الشخص -->
+                            <div id="debt-smart-alert-box" class="hidden p-3 rounded-2xl text-[11px] font-bold leading-relaxed border"></div>
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">تاريخ السداد المتوقع (اختياري):</label>
                                 <input type="date" id="debt-due-date"

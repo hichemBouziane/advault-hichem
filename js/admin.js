@@ -3010,6 +3010,10 @@ function updateExpensesCharts(expenses) {
     });
 }
 
+window.allCompanyDebtsCache = [];
+window.debtPersonStatsMap = {};
+window.selectedDebtPersonFilter = '';
+
 async function loadCompanyDebts() {
     const tbody = document.getElementById('admin-debts-table-body');
     if (!tbody) return;
@@ -3022,37 +3026,98 @@ async function loadCompanyDebts() {
 
         if (error) throw error;
 
-        // 1. حساب الإحصائيات (فقط الديون غير المقضية)
+        window.allCompanyDebtsCache = allDebts || [];
+
+        // 1. تجميع حسابات كل شخص (بشرط نفس الاسم بغض النظر عن حالة الأحرف)
+        const personMap = {};
         let debtsToPay = 0;
         let debtsToReceive = 0;
 
         (allDebts || []).forEach(d => {
-            if (d.status === 'غير مقضي') {
+            const rawName = (d.person_name || 'غير معروف').trim();
+            const key = rawName.toLowerCase();
+            if (!personMap[key]) {
+                personMap[key] = {
+                    displayName: rawName,
+                    borrowedByMeDzd: 0,      // مجموع الديون التي أخذتها منه (عليّ)
+                    repaidByMeDzd: 0,        // مجموع الدفعات التي أعدتها له
+                    lentByMeDzd: 0,          // مجموع الديون التي أعطيتها له (لي)
+                    repaidByHimDzd: 0,       // مجموع الدفعات التي أعادها لي
+                    netBalanceDzd: 0,        // الصافي: سالب = أنا مدين له، موجب = هو مدين لي
+                    txCount: 0
+                };
+            }
+
+            const p = personMap[key];
+            p.txCount++;
+            const amt = Math.abs(parseFloat(d.amount_dzd || 0));
+            const noteStr = d.notes || '';
+            const isPaymentRecord = noteStr.includes('[دفعة سداد]');
+
+            if (d.status === 'مقضي' && !isPaymentRecord) {
+                // إذا تم تحديد الدين القديم كـ "مقضي" بالكامل، يحسب كأنه أُخذ وسُدد
                 if (d.type === 'علي') {
-                    debtsToPay += parseFloat(d.amount_dzd || 0);
+                    p.borrowedByMeDzd += amt;
+                    p.repaidByMeDzd += amt;
                 } else if (d.type === 'لي') {
-                    debtsToReceive += parseFloat(d.amount_dzd || 0);
+                    p.lentByMeDzd += amt;
+                    p.repaidByHimDzd += amt;
+                }
+            } else {
+                if (isPaymentRecord) {
+                    // هذه عملية سداد دفعة مسجلة
+                    if (d.type === 'لي') {
+                        // أنا دفعت له مالاً لسداد ديني
+                        p.repaidByMeDzd += amt;
+                    } else {
+                        // هو دفع لي مالاً لسداد دينه
+                        p.repaidByHimDzd += amt;
+                    }
+                } else {
+                    // دين أصلي غير مقضي
+                    if (d.type === 'علي') {
+                        p.borrowedByMeDzd += amt;
+                    } else if (d.type === 'لي') {
+                        p.lentByMeDzd += amt;
+                    }
                 }
             }
         });
 
+        // حساب الصافي لكل شخص + الإجماليات العامة للشريط العلوي
+        Object.values(personMap).forEach(p => {
+            // الصافي = (ما لي عنده - ما سدده لي) - (ما له عندي - ما سددته له)
+            p.netBalanceDzd = (p.lentByMeDzd - p.repaidByHimDzd) - (p.borrowedByMeDzd - p.repaidByMeDzd);
+            if (p.netBalanceDzd < 0) {
+                debtsToPay += Math.abs(p.netBalanceDzd);
+            } else if (p.netBalanceDzd > 0) {
+                debtsToReceive += p.netBalanceDzd;
+            }
+        });
+
+        window.debtPersonStatsMap = personMap;
+
         const netDebts = debtsToReceive - debtsToPay;
 
-        const fmt = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' دج';
+        const fmt = n => Math.round(n).toLocaleString('fr-FR') + ' دج';
         document.getElementById('debts-to-pay-lbl').innerText = fmt(debtsToPay);
         document.getElementById('debts-to-receive-lbl').innerText = fmt(debtsToReceive);
         
         const netEl = document.getElementById('debts-net-lbl');
         netEl.innerText = (netDebts >= 0 ? '+' : '') + fmt(netDebts);
-        if (netDebts >= 0) {
-            netEl.className = 'text-emerald-700';
-        } else {
-            netEl.className = 'text-red-750';
-        }
+        netEl.className = netDebts >= 0 ? 'text-emerald-700' : 'text-red-750';
 
-        // 2. تصفية الجدول بناء على الخيار المحدد
+        // عرض بطاقات ملخص الأشخاص في الأعلى
+        renderDebtPersonsSummaryCards(personMap);
+
+        // 2. تصفية الجدول بناء على الفلتر المحدد أو الشخص المختار
         const filterVal = document.getElementById('debt-status-filter').value;
         const filteredDebts = (allDebts || []).filter(d => {
+            if (window.selectedDebtPersonFilter) {
+                if ((d.person_name || '').trim().toLowerCase() !== window.selectedDebtPersonFilter.toLowerCase()) {
+                    return false;
+                }
+            }
             if (filterVal === 'الكل') return true;
             return d.status === filterVal;
         });
@@ -3065,14 +3130,26 @@ async function loadCompanyDebts() {
         tbody.innerHTML = '';
         filteredDebts.forEach(item => {
             const dateStr = item.due_date ? new Date(item.due_date).toLocaleDateString('ar-DZ') : '-';
-            const noteText = (item.notes && item.notes.trim()) ? item.notes.trim() : '-';
-            const typeBadge = item.type === 'علي' 
-                ? `<span class="bg-red-50 text-red-655 border border-red-100 px-2 py-0.5 rounded font-black text-[10px]">🔴 عليّ (للغير)</span>`
-                : `<span class="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded font-black text-[10px]">🟢 لي (عند الغير)</span>`;
+            const rawNote = (item.notes && item.notes.trim()) ? item.notes.trim() : '-';
+            const isPaymentRow = rawNote.includes('[دفعة سداد]');
+            const cleanNote = rawNote.replace('[دفعة سداد]', '').trim() || 'دفعة سداد';
+
+            let typeBadge = '';
+            if (isPaymentRow) {
+                typeBadge = item.type === 'لي'
+                    ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded font-black text-[10px]">💸 دفعة سددتها له</span>`
+                    : `<span class="bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-black text-[10px]">💰 دفعة استلمتها منه</span>`;
+            } else {
+                typeBadge = item.type === 'علي' 
+                    ? `<span class="bg-red-50 text-red-655 border border-red-100 px-2 py-0.5 rounded font-black text-[10px]">🔴 عليّ (للغير)</span>`
+                    : `<span class="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded font-black text-[10px]">🟢 لي (عند الغير)</span>`;
+            }
             
-            const statusBadge = item.status === 'مقضي'
-                ? `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded font-bold">مقضي ✅</span>`
-                : `<span class="bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded font-bold">غير مقضي ⏳</span>`;
+            const statusBadge = isPaymentRow
+                ? `<span class="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded font-bold">دفعة مسجلة ✔️</span>`
+                : (item.status === 'مقضي'
+                    ? `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded font-bold">مقضي ✅</span>`
+                    : `<span class="bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded font-bold">غير مقضي ⏳</span>`);
 
             const toggleBtnText = item.status === 'مقضي' ? '🔄 إرجاع كغير مقضي' : '✅ تحديد كمقضي';
             const toggleBtnClass = item.status === 'مقضي'
@@ -3082,18 +3159,29 @@ async function loadCompanyDebts() {
             const row = document.createElement('tr');
             row.className = 'hover:bg-slate-50 transition border-b border-slate-50';
             row.innerHTML = `
-                <td class="p-3 font-bold text-gray-800">${item.person_name}</td>
+                <td class="p-3 font-bold text-gray-800">
+                    <button onclick="filterDebtsByPerson('${item.person_name.replace(/'/g, "\\'")}')" class="hover:text-indigo-600 hover:underline cursor-pointer">
+                        ${item.person_name}
+                    </button>
+                </td>
                 <td class="p-3">${typeBadge}</td>
                 <td class="p-3 text-center font-bold text-gray-650">$${parseFloat(item.amount_usd || 0).toFixed(2)}</td>
                 <td class="p-3 text-center font-bold ${item.type === 'علي' ? 'text-red-600' : 'text-emerald-600'}">${item.type === 'علي' ? '-' : '+'}${parseInt(item.amount_dzd || 0).toLocaleString('fr-FR')} دج</td>
-                <td class="p-3 text-gray-600 font-semibold max-w-[200px] break-words">${noteText}</td>
+                <td class="p-3 text-gray-600 font-semibold max-w-[200px] break-words">${cleanNote}</td>
                 <td class="p-3 text-gray-450">${dateStr}</td>
                 <td class="p-3 text-center">${statusBadge}</td>
                 <td class="p-3 text-center flex items-center justify-center gap-1.5">
+                    ${!isPaymentRow ? `
+                    <button onclick="openQuickPartialRepay('${item.person_name.replace(/'/g, "\\'")}')"
+                        title="تسجيل دفعة سداد جزئية أو كلية لهذا الشخص"
+                        class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[9px] font-black py-1 px-2 rounded-lg cursor-pointer transition">
+                        💸 سداد دفعة
+                    </button>
                     <button onclick="toggleCompanyDebtStatus('${item.id}', '${item.status}')"
                         class="${toggleBtnClass} text-[9px] font-black py-1 px-2 rounded-lg cursor-pointer transition">
                         ${toggleBtnText}
                     </button>
+                    ` : ''}
                     <button onclick="deleteCompanyDebt('${item.id}')"
                         class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-150 text-[9px] font-black py-1 px-2 rounded-lg cursor-pointer transition">
                         🗑️ حذف
@@ -3109,19 +3197,291 @@ async function loadCompanyDebts() {
     }
 }
 
+// 🆕 عرض بطاقات ملخص كل شخص في الأعلى (مجموع الديون + مجموع ما أعدته له + الباقي)
+function renderDebtPersonsSummaryCards(personMap) {
+    const grid = document.getElementById('debt-persons-summary-grid');
+    if (!grid) return;
+
+    const persons = Object.values(personMap);
+    if (persons.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center text-gray-400 text-xs py-3 bg-white rounded-2xl border border-gray-100">لا توجد حسابات مسجلة بعد.</div>`;
+        return;
+    }
+
+    grid.innerHTML = '';
+    persons.forEach(p => {
+        const isOwedByMe = p.netBalanceDzd < 0; // أنا مدين له
+        const isOwedToMe = p.netBalanceDzd > 0; // هو مدين لي
+        const absNet = Math.abs(Math.round(p.netBalanceDzd));
+
+        let totalTakenLabel = '';
+        let totalRepaidLabel = '';
+        let statusBadge = '';
+        let borderClass = 'border-gray-200';
+
+        if (p.borrowedByMeDzd >= p.lentByMeDzd) {
+            // العلاقة الأساسية: أنا أخذت منه ديوناً (مثل askim)
+            totalTakenLabel = `مجموع ما أخذته منه: <span class="text-red-600 font-black">${Math.round(p.borrowedByMeDzd).toLocaleString('fr-FR')} دج</span>`;
+            totalRepaidLabel = `مجموع ما أعدته له: <span class="text-emerald-600 font-black">${Math.round(p.repaidByMeDzd).toLocaleString('fr-FR')} دج</span>`;
+        } else {
+            // العلاقة الأساسية: أنا أعطيته ديوناً (مثل kddishop)
+            totalTakenLabel = `مجموع ديوني عنده: <span class="text-emerald-700 font-black">${Math.round(p.lentByMeDzd).toLocaleString('fr-FR')} دج</span>`;
+            totalRepaidLabel = `مجموع ما أعاده لي: <span class="text-blue-600 font-black">${Math.round(p.repaidByHimDzd).toLocaleString('fr-FR')} دج</span>`;
+        }
+
+        if (isOwedByMe) {
+            borderClass = 'border-red-200 bg-red-50/20';
+            statusBadge = `<span class="bg-red-100 text-red-800 px-2.5 py-1 rounded-xl text-[10px] font-black">🔴 باقي عليّ له: ${absNet.toLocaleString('fr-FR')} دج</span>`;
+        } else if (isOwedToMe) {
+            borderClass = 'border-emerald-200 bg-emerald-50/20';
+            statusBadge = `<span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-xl text-[10px] font-black">🟢 باقي لي عنده: ${absNet.toLocaleString('fr-FR')} دج</span>`;
+        } else {
+            borderClass = 'border-slate-200 bg-slate-50/40';
+            statusBadge = `<span class="bg-slate-200 text-slate-700 px-2.5 py-1 rounded-xl text-[10px] font-black">✅ خالص (0 دج)</span>`;
+        }
+
+        const isSelected = window.selectedDebtPersonFilter && window.selectedDebtPersonFilter.toLowerCase() === p.displayName.toLowerCase();
+        if (isSelected) borderClass += ' ring-2 ring-indigo-500';
+
+        const safeName = p.displayName.replace(/'/g, "\\'");
+
+        const card = document.createElement('div');
+        card.className = `bg-white rounded-2xl p-4 border ${borderClass} shadow-xs flex flex-col justify-between gap-2.5 transition hover:shadow-md`;
+        card.innerHTML = `
+            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                <button onclick="filterDebtsByPerson('${safeName}')" class="font-black text-gray-800 text-sm hover:text-indigo-600 flex items-center gap-1.5 cursor-pointer">
+                    <span>👤</span> <span>${p.displayName}</span>
+                    <span class="text-[10px] text-gray-400 font-normal">(${p.txCount} معاملات)</span>
+                </button>
+                ${statusBadge}
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[11px] text-gray-600 font-bold bg-gray-50/80 p-2.5 rounded-xl">
+                <div>${totalTakenLabel}</div>
+                <div>${totalRepaidLabel}</div>
+            </div>
+            <div class="flex items-center justify-between gap-2 pt-1">
+                <button onclick="openQuickPartialRepay('${safeName}')"
+                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold py-1.5 px-3 rounded-xl cursor-pointer transition flex items-center justify-center gap-1 shadow-xs">
+                    <span>💸</span> سداد دفعة جزئية / كلية
+                </button>
+                <button onclick="filterDebtsByPerson('${safeName}')"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] font-bold py-1.5 px-2.5 rounded-xl cursor-pointer transition">
+                    🔍 كشف الحساب
+                </button>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+// 🆕 تصفية الجدول لشخص واحد عند الضغط على اسمه
+window.filterDebtsByPerson = function (personName) {
+    window.selectedDebtPersonFilter = personName || '';
+    const clearBtn = document.getElementById('clear-person-filter-btn');
+    if (clearBtn) {
+        if (window.selectedDebtPersonFilter) {
+            clearBtn.classList.remove('hidden');
+            clearBtn.innerText = `🔄 إلغاء فلتر (${personName}) وعرض الكل`;
+        } else {
+            clearBtn.classList.add('hidden');
+        }
+    }
+    loadCompanyDebts();
+};
+
+// 🆕 قائمة الاقتراحات الذكية (Autocomplete) عند البدء بكتابة اسم المدين/الدائن
+window.handleDebtPersonInput = function () {
+    const input = document.getElementById('debt-person-name');
+    const box = document.getElementById('debt-person-suggestions');
+    if (!input || !box) return;
+
+    const val = input.value.trim().toLowerCase();
+    const persons = Object.values(window.debtPersonStatsMap || {});
+
+    if (persons.length === 0) {
+        box.classList.add('hidden');
+        return;
+    }
+
+    const matched = persons.filter(p => !val || p.displayName.toLowerCase().includes(val));
+    if (matched.length === 0) {
+        box.classList.add('hidden');
+        checkDebtPaymentAlert();
+        return;
+    }
+
+    box.innerHTML = '';
+    matched.forEach(p => {
+        const absNet = Math.abs(Math.round(p.netBalanceDzd)).toLocaleString('fr-FR');
+        let badge = `<span class="text-gray-500 text-[10px]">متوازن (0 دج)</span>`;
+        if (p.netBalanceDzd < 0) {
+            badge = `<span class="text-red-600 font-black text-[10px]">🔴 باقي عليّ له: ${absNet} دج</span>`;
+        } else if (p.netBalanceDzd > 0) {
+            badge = `<span class="text-emerald-600 font-black text-[10px]">🟢 باقي لي عنده: ${absNet} دج</span>`;
+        }
+
+        const item = document.createElement('div');
+        item.className = 'px-3.5 py-2.5 hover:bg-indigo-50 cursor-pointer flex items-center justify-between transition';
+        item.innerHTML = `
+            <span class="font-black text-gray-800">${p.displayName}</span>
+            ${badge}
+        `;
+        item.onclick = () => {
+            input.value = p.displayName;
+            box.classList.add('hidden');
+            checkDebtPaymentAlert();
+        };
+        box.appendChild(item);
+    });
+
+    box.classList.remove('hidden');
+    checkDebtPaymentAlert();
+};
+
+// إغلاق قائمة الاقتراحات عند النقر خارجها
+document.addEventListener('click', (e) => {
+    const box = document.getElementById('debt-person-suggestions');
+    const input = document.getElementById('debt-person-name');
+    if (box && input && !box.contains(e.target) && e.target !== input) {
+        box.classList.add('hidden');
+    }
+});
+
+// 🆕 زر اختصار "سداد دفعة" يملأ النموذج تلقائياً للشخص المختار
+window.openQuickPartialRepay = function (personName) {
+    const input = document.getElementById('debt-person-name');
+    const typeSelect = document.getElementById('debt-type');
+    const amountDzdInput = document.getElementById('debt-amount-dzd');
+    const notesInput = document.getElementById('debt-notes');
+
+    if (!input || !typeSelect) return;
+    input.value = personName;
+
+    const stats = (window.debtPersonStatsMap || {})[personName.trim().toLowerCase()];
+    if (stats && stats.netBalanceDzd > 0) {
+        // هو مدين لي، إذن نستلم منه دفعة
+        typeSelect.value = 'سداد_لي';
+    } else {
+        // أنا مدين له (مثل askim)، إذن نسدد له دفعة
+        typeSelect.value = 'سداد_علي';
+    }
+
+    if (notesInput) notesInput.value = 'دفعة سداد من الحساب';
+    if (amountDzdInput) {
+        amountDzdInput.focus();
+        amountDzdInput.select();
+    }
+    checkDebtPaymentAlert();
+};
+
+// 🆕 الفحص والتنبيه الذكي الفوري عند كتابة مبلغ السداد أو الدين
+window.checkDebtPaymentAlert = function () {
+    const alertBox = document.getElementById('debt-smart-alert-box');
+    const nameVal = (document.getElementById('debt-person-name')?.value || '').trim().toLowerCase();
+    const typeVal = document.getElementById('debt-type')?.value;
+    const amountDzd = parseFloat(document.getElementById('debt-amount-dzd')?.value) || 0;
+
+    if (!alertBox) return;
+    const stats = (window.debtPersonStatsMap || {})[nameVal];
+
+    if (!stats || amountDzd <= 0) {
+        alertBox.classList.add('hidden');
+        return;
+    }
+
+    const currentNet = stats.netBalanceDzd; // سالب = أنا مدين له، موجب = هو مدين لي
+    const myCurrentDebtToPerson = currentNet < 0 ? Math.abs(currentNet) : 0;
+    const personCurrentDebtToMe = currentNet > 0 ? currentNet : 0;
+
+    alertBox.classList.remove('hidden');
+
+    if (typeVal === 'سداد_علي') {
+        // أنا أسدد ديناً عليّ لهذا الشخص (مثال: askim)
+        if (myCurrentDebtToPerson === 0) {
+            alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-amber-50 border-amber-300 text-amber-900';
+            alertBox.innerHTML = `⚠️ تنبيه: لا يوجد عليك أي دين مسجل حالياً لـ (${stats.displayName})! إذا أعطيته هذا المبلغ (${amountDzd.toLocaleString('fr-FR')} دج) سيُحسب كـ "دين جديد لك عنده".`;
+        } else if (amountDzd > myCurrentDebtToPerson) {
+            const extra = amountDzd - myCurrentDebtToPerson;
+            alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-red-50 border-red-300 text-red-900';
+            alertBox.innerHTML = `🚨 تنبيه هام: المبلغ الذي كتبته (${amountDzd.toLocaleString('fr-FR')} دج) **أكبر من إجمالي الدين المتبقي عليك** لـ (${stats.displayName}) والبالغ **${myCurrentDebtToPerson.toLocaleString('fr-FR')} دج**!<br>💡 الفرق الزائد هو **+${extra.toLocaleString('fr-FR')} دج** (يعني ستسدد دينك بالكامل ويصبح هو مديناً لك بـ ${extra.toLocaleString('fr-FR')} دج).`;
+        } else if (amountDzd < myCurrentDebtToPerson) {
+            const remainingAfter = myCurrentDebtToPerson - amountDzd;
+            alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-blue-50 border-blue-200 text-blue-900';
+            alertBox.innerHTML = `ℹ️ سداد جزئي (المبالغ غير متساوية): إجمالي الدين عليك هو **${myCurrentDebtToPerson.toLocaleString('fr-FR')} دج**. بعد دفع **${amountDzd.toLocaleString('fr-FR')} دج**، سيبقى عليك **${remainingAfter.toLocaleString('fr-FR')} دج**.`;
+        } else {
+            alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-emerald-50 border-emerald-300 text-emerald-900';
+            alertBox.innerHTML = `✅ تطابق تام! هذا المبلغ (${amountDzd.toLocaleString('fr-FR')} دج) يساوي تماماً إجمالي الدين المتبقي عليك لـ (${stats.displayName})، وسيصبح رصيدكما **0 دج (خالص)**.`;
+        }
+    } else if (typeVal === 'سداد_لي') {
+        // الطرف الآخر يسدد لي من دينه
+        if (personCurrentDebtToMe === 0) {
+            alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-amber-50 border-amber-300 text-amber-900';
+            alertBox.innerHTML = `⚠️ تنبيه: (${stats.displayName}) ليس مديناً لك بأي مبلغ حالياً! استلامك لهذا المبلغ سيُحسب كـ "دين عليك له".`;
+        } else if (amountDzd > personCurrentDebtToMe) {
+            const extra = amountDzd - personCurrentDebtToMe;
+            alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-red-50 border-red-300 text-red-900';
+            alertBox.innerHTML = `🚨 تنبيه هام: الدفعة المستلمة (${amountDzd.toLocaleString('fr-FR')} دج) **أكبر من إجمالي دين (${stats.displayName})** والبالغ **${personCurrentDebtToMe.toLocaleString('fr-FR')} دج**!<br>💡 الزيادة هي **+${extra.toLocaleString('fr-FR')} دج** (ستصبح ديناً عليك له).`;
+        } else if (amountDzd < personCurrentDebtToMe) {
+            const remainingAfter = personCurrentDebtToMe - amountDzd;
+            alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-blue-50 border-blue-200 text-blue-900';
+            alertBox.innerHTML = `ℹ️ تحصيل جزئي: إجمالي دينه هو **${personCurrentDebtToMe.toLocaleString('fr-FR')} دج**. بعد استلام **${amountDzd.toLocaleString('fr-FR')} دج**، سيبقى لك عنده **${remainingAfter.toLocaleString('fr-FR')} دج**.`;
+        } else {
+            alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-emerald-50 border-emerald-300 text-emerald-900';
+            alertBox.innerHTML = `✅ تطابق تام! المبلغ المستلم يسدد كامل دين (${stats.displayName}) ويصبح الرصيد **0 دج**.`;
+        }
+    } else if (typeVal === 'علي') {
+        const newDebt = myCurrentDebtToPerson + amountDzd - personCurrentDebtToMe;
+        alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-slate-50 border-slate-200 text-slate-800';
+        alertBox.innerHTML = `📌 رصيد (${stats.displayName}) قبل هذه العملية: **${myCurrentDebtToPerson > 0 ? 'عليك له ' + myCurrentDebtToPerson.toLocaleString('fr-FR') + ' دج' : (personCurrentDebtToMe > 0 ? 'لك عنده ' + personCurrentDebtToMe.toLocaleString('fr-FR') + ' دج' : '0 دج')}**.<br>بعد إضافة هذا الدين سيصبح الصافي: **${newDebt >= 0 ? 'عليك له ' + newDebt.toLocaleString('fr-FR') + ' دج' : 'لك عنده ' + Math.abs(newDebt).toLocaleString('fr-FR') + ' دج'}**.`;
+    } else if (typeVal === 'لي') {
+        const newCredit = personCurrentDebtToMe + amountDzd - myCurrentDebtToPerson;
+        alertBox.className = 'p-3 rounded-2xl text-[11px] font-bold leading-relaxed border bg-slate-50 border-slate-200 text-slate-800';
+        alertBox.innerHTML = `📌 رصيد (${stats.displayName}) قبل هذه العملية: **${personCurrentDebtToMe > 0 ? 'لك عنده ' + personCurrentDebtToMe.toLocaleString('fr-FR') + ' دج' : (myCurrentDebtToPerson > 0 ? 'عليك له ' + myCurrentDebtToPerson.toLocaleString('fr-FR') + ' دج' : '0 دج')}**.<br>بعد هذه العملية سيصبح الصافي: **${newCredit >= 0 ? 'لك عنده ' + newCredit.toLocaleString('fr-FR') + ' دج' : 'عليك له ' + Math.abs(newCredit).toLocaleString('fr-FR') + ' دج'}**.`;
+    }
+};
+
 async function saveCompanyDebt(event) {
     if (event) event.preventDefault();
     const personName = document.getElementById('debt-person-name').value.trim();
-    const type = document.getElementById('debt-type').value;
+    const rawType = document.getElementById('debt-type').value;
     const amountUsd = parseFloat(document.getElementById('debt-amount-usd').value) || 0;
     const amountDzd = parseFloat(document.getElementById('debt-amount-dzd').value) || 0;
     const dueDate = document.getElementById('debt-due-date').value || null;
-    const notes = document.getElementById('debt-notes').value.trim();
+    let notes = document.getElementById('debt-notes').value.trim();
     const submitBtn = document.getElementById('debt-submit-btn');
 
     if (!personName) {
         alert("يرجى إدخال اسم الطرف الآخر.");
         return;
+    }
+
+    // التحقق والتنبيه عند تسجيل دفعة سداد أكبر من إجمالي الدين
+    const stats = (window.debtPersonStatsMap || {})[personName.toLowerCase()];
+    if (stats) {
+        const myDebt = stats.netBalanceDzd < 0 ? Math.abs(stats.netBalanceDzd) : 0;
+        const hisDebt = stats.netBalanceDzd > 0 ? stats.netBalanceDzd : 0;
+
+        if (rawType === 'سداد_علي' && amountDzd > myDebt) {
+            const extra = amountDzd - myDebt;
+            const ok = confirm(`⚠️ تنبيه: المبلغ الذي تسدده (${amountDzd.toLocaleString('fr-FR')} دج) أكبر من إجمالي الدين الذي أخذته من (${stats.displayName}) والبالغ (${myDebt.toLocaleString('fr-FR')} دج)!\n\nالفرق الزائد (+${extra.toLocaleString('fr-FR')} دج) سيُحسب لصالحك كدين لك عنده.\nهل تريد المتابعة وحفظ الدفعة؟`);
+            if (!ok) return;
+        } else if (rawType === 'سداد_لي' && amountDzd > hisDebt) {
+            const extra = amountDzd - hisDebt;
+            const ok = confirm(`⚠️ تنبيه: الدفعة المستلمة (${amountDzd.toLocaleString('fr-FR')} دج) أكبر من إجمالي دين (${stats.displayName}) والبالغ (${hisDebt.toLocaleString('fr-FR')} دج)!\n\nالفرق الزائد (+${extra.toLocaleString('fr-FR')} دج) سيُحسب كدين عليك له.\nهل تريد المتابعة وحفظ الدفعة؟`);
+            if (!ok) return;
+        }
+    }
+
+    // تحويل نوع المعاملة ليتوافق مع قاعدة البيانات (علي / لي) مع وسم [دفعة سداد]
+    let dbType = rawType;
+    if (rawType === 'سداد_علي') {
+        // عندما أسدد ديني، فهذا المبلغ يُحسب بالزائد لصالح ميزاني (ينقص ديني)
+        dbType = 'لي';
+        notes = `[دفعة سداد] ${notes || 'سداد دفعة من الدين'}`;
+    } else if (rawType === 'سداد_لي') {
+        // عندما يسدد لي المدين، ينقص دينه الذي لي عنده
+        dbType = 'علي';
+        notes = `[دفعة سداد] ${notes || 'استلام دفعة من الدين'}`;
     }
 
     submitBtn.disabled = true;
@@ -3131,8 +3491,8 @@ async function saveCompanyDebt(event) {
         const { error } = await _supabase
             .from('company_debts')
             .insert([{
-                person_name: personName,
-                type,
+                person_name: stats ? stats.displayName : personName, // توحيد كتابة الاسم مع المسجل سابقاً
+                type: dbType,
                 amount_usd: amountUsd,
                 amount_dzd: amountDzd,
                 due_date: dueDate,
@@ -3141,13 +3501,15 @@ async function saveCompanyDebt(event) {
 
         if (error) throw error;
 
-        showToast("تم تسجيل وحفظ الدين بنجاح! 🤝");
+        showToast("تم تسجيل وحفظ المعاملة بنجاح! 🤝");
         document.getElementById('debt-form').reset();
+        const alertBox = document.getElementById('debt-smart-alert-box');
+        if (alertBox) alertBox.classList.add('hidden');
         await loadCompanyDebts();
 
     } catch (e) {
         console.error("Error saving debt:", e);
-        alert("حدث خطأ أثناء حفظ الدين.");
+        alert("حدث خطأ أثناء حفظ المعاملة.");
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = "💾 حفظ الدين";
